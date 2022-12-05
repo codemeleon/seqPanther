@@ -1,0 +1,1057 @@
+#!/usr/bin/env python
+
+import itertools
+from glob import glob
+from collections import Counter
+from Bio import SeqIO, Seq
+import sys
+import pysam
+import numpy as np
+import pandas as pd
+import click
+import tempfile
+from os import path
+from functools import partial
+from shutil import rmtree
+
+__author__ = "Anmol Kiran"
+__organisation__ = (
+    "Malawi-Liverpool-Wellcome Trust, Malawi; University of Liverpool, UK"
+)
+__github__ = "codemeleon"
+__email__ = "akiran@mlw.mw"
+__version__ = "0.0.1"
+
+
+_codon_table = {
+    "TAG": "*",
+    "TAA": "*",
+    "TGA": "*",
+    "TTT": "F",
+    "TTC": "F",
+    "TTA": "L",
+    "TTG": "L",
+    "TCT": "S",
+    "TCC": "S",
+    "TCA": "S",
+    "TCG": "S",
+    "TAT": "Y",
+    "TAC": "Y",
+    "TGT": "C",
+    "TGC": "C",
+    "TGG": "W",
+    "CTT": "L",
+    "CTC": "L",
+    "CTA": "L",
+    "CTG": "L",
+    "CCT": "P",
+    "CCC": "P",
+    "CCA": "P",
+    "CCG": "P",
+    "CAT": "H",
+    "CAC": "H",
+    "CAA": "Q",
+    "CAG": "Q",
+    "CGT": "R",
+    "CGC": "R",
+    "CGA": "R",
+    "CGG": "R",
+    "ATT": "I",
+    "ATC": "I",
+    "ATA": "I",
+    "ATG": "M",
+    "ACT": "T",
+    "ACC": "T",
+    "ACA": "T",
+    "ACG": "T",
+    "AAT": "N",
+    "AAC": "N",
+    "AAA": "K",
+    "AAG": "K",
+    "AGT": "S",
+    "AGC": "S",
+    "AGA": "R",
+    "AGG": "R",
+    "GTT": "V",
+    "GTC": "V",
+    "GTA": "V",
+    "GTG": "V",
+    "GCT": "A",
+    "GCC": "A",
+    "GCA": "A",
+    "GCG": "A",
+    "GAT": "D",
+    "GAC": "D",
+    "GAA": "E",
+    "GAG": "E",
+    "GGT": "G",
+    "GGC": "G",
+    "GGA": "G",
+    "GGG": "G",
+}
+
+
+def ranges(i):
+    def ranges_gen(i):
+        for a, b in itertools.groupby(enumerate(i), lambda pair: pair[1] - pair[0]):
+            b = list(b)
+            yield b[0][1], b[-1][1]
+
+    return list(ranges_gen(np.sort(list(set(i)))))
+
+
+def check_sort_and_index_bam(bam_file, tmp_dir):
+    """
+    Checks file is sorted or not. If not, sorts and indexes.
+    """
+    stats = pysam.stats(bam_file).splitlines()
+    is_sorted = False
+    for line in stats:
+        if line.startswith("SN"):
+            line_split = line.split("\t")
+            if line_split[1] == "is sorted":
+                if line_split[2] == "1":
+                    is_sorted = True
+                break
+    if is_sorted:
+        if not path.exists(bam_file + ".bai"):
+            pysam.index(bam_file)
+        return bam_file
+    else:
+        output_prefix = tmp_dir + "/" + path.split(bam_file)[1]
+        pysam.sort("-o", output_prefix, bam_file)
+        pysam.index(output_prefix)
+        return output_prefix
+
+
+@click.command()
+@click.option(
+    "-bam",
+    help="Bam files",
+    # default="/home/devil/Documents/Tools/BitterBits/src/test_data/"
+    # "K032623-rep-consensus_alignment_sorted.REF_NC_045512.2.bam",
+    # default="./test_data/NC_045512.2.sorted.bam",
+    # default="./test_data/InDel/K011018-NC_045512.2_1-consensus_alignment_sorted.bam",  # Deletion
+    default="test_data/InDel/Insert/SRR17051909.sorted.bam",  # Inserttion
+    type=str,
+    show_default=True,
+)
+@click.option(
+    "-rid",
+    help="Reference ID",
+    type=str,
+    default="NC_045512.2",
+    show_default=True,
+)
+@click.option(
+    "-ref",
+    help="Reference fasta files",
+    type=click.File("r"),
+    default="./test_data/NC_045512.2.fasta",
+    # default="./test_data/NC_045512.2_rev_comp.fasta",
+    show_default=True,
+)
+@click.option(
+    "-coor_range",
+    help="Coordinates in the reference, zero index based, end exclusive",
+    type=str,
+    # default="21000-25000", #  Forward sub
+    # default="4900-9000", # Reverse sub
+    # default="22279-22300",  # For Deletion position
+    default="22190-22206",  # Forward insert
+    show_default=True,
+)
+@click.option(
+    "-gff",
+    help="Gff Annotation File",
+    type=click.File("r"),
+    default="/home/devil/Documents/Tools/BitterBits/src/test_data/genemap.gff",
+    # default="./test_data/genemap_rev_complement.gff",
+    show_default=True,
+)
+@click.option(
+    "--ignore_orphans",
+    help="Ignore orphaned (Unpaired) reads",
+    type=bool,
+    default=False,
+    show_default=True,
+)
+@click.option(
+    "--min_mapping_quality",
+    help="Mapping quality of reads",
+    type=int,
+    default=0,
+    show_default=True,
+)
+@click.option(
+    "--min_base_quality",
+    help="Minimum base quality for correct base call",
+    type=int,
+    default=0,
+    show_default=True,
+)
+@click.option(
+    "--ignore_overlaps",
+    help="Ignore paired overlapping reads",
+    type=bool,
+    default=False,
+    show_default=True,
+)
+@click.option(
+    "--sort_index",
+    help="Sort and index bam file",
+    type=bool,
+    default=False,
+    show_default=True,
+)
+# TODO: Add samfiles relates conditions
+@click.option(
+    "--min_seq_depth",
+    help="Minimum sequencing depth at position to be considred",
+    type=int,
+    default=20,
+    show_default=True,
+)
+@click.option(
+    "--alt_nuc_count",
+    help="Minimum alternate nucleotide count fraction",
+    type=click.FloatRange(0.03, 0.5),
+    default=0.03,
+    show_default=True,
+)
+def run(
+    bam,
+    rid,
+    coor_range,
+    ref,
+    gff,
+    ignore_orphans,
+    min_mapping_quality,
+    min_base_quality,
+    ignore_overlaps,
+    sort_index,
+    min_seq_depth,
+    alt_nuc_count,
+):
+    """Expected to that bam file is sorted based on coordinate and indexed."""
+
+    # NOTE: GFF to table
+    gff_data = gff.read()
+    gff_data = gff_data.split("##FASTA")[0]
+    gff_data = gff_data.split("\n")
+    gff_data = [x for x in gff_data if (x == "" or x[0] == "#") is False]
+    gff_data = [x.split("\t") for x in gff_data]
+    gff_data = pd.DataFrame(
+        gff_data,
+        columns=[
+            "seq_id",
+            "source",
+            "feature",
+            "start",
+            "end",
+            "score",
+            "strand",
+            "frame",
+            "attribute",
+        ],
+    )
+    gff_data = gff_data.loc[gff_data["feature"] == "CDS"]
+    gff_data["start"] = gff_data["start"].astype(int) - 1
+    gff_data["end"] = gff_data["end"].astype(int)
+    if rid not in gff_data["seq_id"].unique():
+        print("Reference sequence is not in gff file. Exiting.")
+        print("Reference", gff_data["seq_id"].unique())
+        exit()
+
+        # TODO: Need details whether the fist and last are in the same CDS. If not, need to split the CDS.
+        # TODO: If a region is not part of a CDS, consider that as part of intergenic region.
+
+    # NOTE: reference sequence
+    sequences = {}
+    for rec in SeqIO.parse(ref, "fasta"):
+        sequences[rec.id] = str(rec.seq).upper()
+    # print(gff_data)
+    # exit(0)
+
+    # print(sequences["NC_045512.2"][265:268])
+    # print(gff_data)
+    # exit(0)
+
+    # MOTE: Listing bam files
+    bam_files = []
+
+    if not bam:
+        print("Bam file not given.")
+        sys.exit(0)
+    if not path.exists(bam):
+        print(f"Given bam file path {bam} doesn't exist.")
+        sys.exit(0)
+    if path.isdir(bam):
+        bam_files = glob(f"{bam}/*.bam")
+    if path.isfile(bam):
+        bam_files = [bam]
+
+    tmp_dir = tempfile.mkdtemp()
+    for i, bam in enumerate(bam_files):
+        bam_files[i] = check_sort_and_index_bam(bam, tmp_dir=tmp_dir)
+
+    # NOTE: genomic range
+    coor_range = coor_range.split("-")
+    if len(coor_range) == 2:
+        try:
+            start = int(coor_range[0])
+        except ValueError:
+            exit("Range format is not correct, value before '-' is not numerical")
+        try:
+            end = int(coor_range[1]) + 1
+        except Exception as e:
+            exit("Range format is not correct, value after '-' is not numerical")
+    elif len(coor_range) == 1:
+        try:
+            start = int(coor_range[0])
+            end = int(coor_range[0]) + 1
+        except:
+            exit("Given coordinate is not numerical")
+    else:
+        print("Coordinate range is not in correct format")
+        sys.exit(0)
+
+    all_changes = []
+
+    for bam in bam_files:
+        sample = path.split(bam)[1].split(".")[0]
+        samfile = pysam.AlignmentFile(bam, "rb")
+
+        if rid not in samfile.references:
+            print(f"Given reference {ref} not in given bam file {bam}")
+            print("List of references")
+            print(samfile.references)
+            print(f"Ignoring {bam}")
+            continue
+
+        # TODO: How will you handle the frame shift?
+        # TODO: What if there are indels in the gene?
+        # NOTE: Not for genome with splicing
+
+        iter = samfile.pileup(
+            rid,
+            start,
+            end,
+            ignore_orphans=ignore_orphans,
+            # Play with all these three parameters
+            min_mapping_quality=min_mapping_quality,
+            min_base_quality=min_base_quality,
+            ignore_overlaps=ignore_overlaps,
+        )
+        # TODO: First report the coordinates with mismatches only. Then report the codon and amino acid.
+        # TODO: merge the nucletide which are part of the same codon.
+        # TODO: Then check if they results in the same amino acid or not.
+        coordinates_with_change = {}
+        indel_read_depth = {}
+        indel_pos_type_size = {"coor": [], "indel": []}
+        # del_pos_depth = {}
+        for pileupcol in iter:
+            # print(help(pileupcol))
+            # exit(0)
+            if pileupcol.n < min_seq_depth:
+                continue
+            if (pileupcol.pos >= start) & (pileupcol.pos < end):
+                # TODO: Include base call quality
+                bases = {}
+                nuc_count = 0
+                # del_bool = True
+
+                for pread in pileupcol.pileups:
+                    if pread.indel:
+                        if pileupcol.pos not in indel_read_depth:
+                            indel_read_depth[pileupcol.pos] = pileupcol.n
+                        indel_pos_type_size["coor"].append(pileupcol.pos)
+                        indel_pos_type_size["indel"].append(pread.indel)
+                        # print(pread.indel, "kiran", pileupcol.pos)
+
+                    if not pread.is_del and not pread.is_refskip:
+                        if (
+                            pread.alignment.query_sequence[pread.query_position]
+                            not in "ATGC"
+                        ):
+                            continue
+                        if (
+                            pread.alignment.query_sequence[pread.query_position]
+                            not in bases
+                        ):
+                            bases[
+                                pread.alignment.query_sequence[pread.query_position]
+                            ] = {"nuc_count": 0, "codon_count": {}}
+                        bases[pread.alignment.query_sequence[pread.query_position]][
+                            "nuc_count"
+                        ] += 1
+                        nuc_count += 1
+                # NOTE: Deleting nucleotide which have low frequency
+
+                nucs_to_delete = ""
+                for nuc in bases.keys():
+                    if bases[nuc]["nuc_count"] < alt_nuc_count * nuc_count:
+                        nucs_to_delete += nuc
+                for nuc in nucs_to_delete:
+                    del bases[nuc]
+                if set(bases) - set([sequences[rid][pileupcol.pos]]):
+                    coordinates_with_change[pileupcol.pos] = {
+                        "bases": bases,
+                        # pileupcol.n, # NOTE: Pileup.n doesn't change based on given chriterian
+                        "read_count": nuc_count,
+                    }
+        indel_read_depth = pd.DataFrame(
+            {
+                "coor": list(indel_read_depth.keys()),
+                "depth": list(indel_read_depth.values()),
+            }
+        )
+        indel_pos_type_size = pd.DataFrame(indel_pos_type_size)
+        indel_pos_type_size = (
+            indel_pos_type_size.groupby(["coor", "indel"]).size().reset_index()
+        ).rename(columns={0: "indel_read_count"})
+        indel_pos_type_size = indel_pos_type_size.merge(
+            indel_read_depth, on="coor")
+        indel_pos_type_size = indel_pos_type_size[
+            indel_pos_type_size["indel_read_count"]
+            > alt_nuc_count * indel_pos_type_size["depth"]
+        ]
+        # TODO: use when you need it
+        frame_shift_indel = indel_pos_type_size[indel_pos_type_size["indel"] % 3 != 0]
+        indel_pos_type_size = indel_pos_type_size[indel_pos_type_size["indel"] % 3 == 0]
+        print(coordinates_with_change)
+        # exit(0)
+        deletion_frame = {}
+        insertion_frame = {}
+
+        for _, row in indel_pos_type_size.iterrows():
+            t_gff_data = gff_data[
+                (gff_data["start"] <= row["coor"]) & (
+                    gff_data["end"] > row["coor"])
+            ]
+            if len(t_gff_data) == 0:
+                print(f'No gff data found for {row["coor"]}')
+                continue
+            for _, gff_row in t_gff_data.iterrows():
+                iter = samfile.pileup(
+                    rid,
+                    row["coor"],
+                    row["coor"] + 1,
+                    ignore_orphans=ignore_orphans,
+                    min_mapping_quality=min_mapping_quality,
+                    min_base_quality=min_base_quality,
+                    ignore_overlaps=ignore_overlaps,
+                )
+
+                if row["indel"] < 0:
+                    for pileupcol in iter:
+                        if pileupcol.pos != row["coor"]:
+                            continue
+                        adjusted_coor = row["coor"] + 1
+                        shift = (adjusted_coor - gff_row["start"]) % 3  # + 1
+                        r_shift = (3 - shift) % 3
+                        ref_sub_seq = sequences[rid][
+                            adjusted_coor
+                            - shift: adjusted_coor
+                            - 1 * row["indel"]
+                            + r_shift
+                        ]
+                        amino_pos = (
+                            adjusted_coor - gff_row["start"]
+                        ) // 3  # - 1 * row["indel"]
+                        # print(row, shift, row["coor"], gff_row["start"])
+                        ref_count = 0
+                        deleted_codon = []
+                        for pread in pileupcol.pileups:
+                            if (pread.indel < 0) and (pread.indel == row["indel"]):
+                                read_sub_seq = pread.alignment.query_sequence[
+                                    pread.query_position
+                                    - shift
+                                    + 1: pread.query_position
+                                    + r_shift
+                                    + 1
+                                ]
+                                if len(read_sub_seq) % 3 == 0:
+                                    deleted_codon.append(read_sub_seq)
+                            if not pread.is_refskip and not pread.is_del:
+                                read_sub_seq = pread.alignment.query_sequence[
+                                    pread.query_position
+                                    - shift
+                                    + 1: pread.query_position
+                                    - 1 * row["indel"]
+                                    + r_shift
+                                    + 1
+                                ]
+                                # print(read_sub_seq, ref_sub_seq)
+
+                                if read_sub_seq == ref_sub_seq:
+                                    ref_count += 1
+                        if pileupcol.pos not in deletion_frame:
+                            deletion_frame[pileupcol.pos] = []
+                        # deletion_frame[pileupcol.pos].append(
+                        # {  # +1
+                        # "ref": ref_sub_seq,
+                        # "shift": shift,
+                        # "amino_pos": amino_pos,
+                        # "r_shift": r_shift,
+                        # "ref_count": ref_count,
+                        # "alt_count": Counter(deleted_codon),
+                        # }
+                        # )
+                        print(pileupcol.pos, deletion_frame[pileupcol.pos])
+                        if gff_row["strand"] == "-":
+                            amino_pos = (
+                                (gff_row["end"] - gff_row["start"]) // 3
+                                - (len(ref_sub_seq) - (shift + r_shift)) // 3
+                                - amino_pos
+                                - (1 if shift else 0)
+                            )
+                            shift, r_shift = r_shift, shift
+                            for i, codon in enumerate(deleted_codon):
+                                deleted_codon[i] = Seq.Seq(
+                                    codon).reverse_complement()
+                            ref_sub_seq = Seq.Seq(
+                                ref_sub_seq).reverse_complement()
+
+                        deletion_frame[pileupcol.pos].append(
+                            {  # +1
+                                "ref": ref_sub_seq,
+                                "shift": shift,
+                                "amino_pos": amino_pos,
+                                "r_shift": r_shift,
+                                "ref_count": ref_count,
+                                "alt_count": Counter(deleted_codon),
+                                "strand": "+" if gff_row["strand"] == "+" else "-",
+                            }
+                        )
+                        # print(deletion_frame, shift, r_shift, row["indel"], "")
+                        break
+
+                if (row["indel"] > 0) and (pread.indel == row["indel"]):
+
+                    for pileupcol in iter:
+                        if pileupcol.pos != row["coor"]:
+                            continue
+
+                        shift = (row["coor"] - gff_row["start"] + 1) % 3  # + 1
+                        amino_pos = (row["coor"] - gff_row["start"] + 1) // 3
+
+                        r_shift = (3 - shift) % 3
+                        ref_sub_seq = sequences[rid][
+                            row["coor"] - shift + 1: row["coor"] + r_shift + 1
+                        ]
+                        print(row, gff_row, shift, ref_sub_seq, "anmol")
+                        inserted_codon = []
+                        ref_count = 0
+
+                        for pread in pileupcol.pileups:
+                            if pread.indel > 0:
+                                read_sub_seq = pread.alignment.query_sequence[
+                                    pread.query_position
+                                    - shift
+                                    + 1: pread.query_position
+                                    + row["indel"]
+                                    + r_shift
+                                    + 1
+                                ]
+                                inserted_codon.append(read_sub_seq)
+                            if not pread.is_del and not pread.is_refskip:
+                                read_sub_seq = pread.alignment.query_sequence[
+                                    pread.query_position
+                                    - shift
+                                    + 1: pread.query_position
+                                    + r_shift
+                                    + 1
+                                ]
+                                # print(read_sub_seq, "test")
+                                if read_sub_seq == ref_sub_seq:
+                                    ref_count += 1
+
+                        if gff_row["strand"] == "-":
+                            print(
+                                gff_row["end"],
+                                gff_row["start"],
+                                (gff_row["end"] - gff_row["start"] + 1),
+                                "MM",
+                            )
+                            amino_pos = (
+                                (gff_row["end"] - gff_row["start"]) // 3
+                                - (shift + r_shift) // 3
+                                - amino_pos
+                                + (1 if shift else 0)
+                            )
+                            for i, codon in enumerate(inserted_codon):
+                                inserted_codon[i] = Seq.Seq(
+                                    codon).reverse_complement()
+                            print(ref_sub_seq, "HAHAHAH")
+                            ref_sub_seq = Seq.Seq(
+                                ref_sub_seq).reverse_complement()
+                            print(ref_sub_seq, "You are ")
+
+                        insertion_frame[
+                            pileupcol.pos  # - shift
+                        ] = {  # Location is where codon start
+                            "ref": ref_sub_seq,
+                            "amino_pos": amino_pos,
+                            # "ref_codon_position":pileupcol.pos - shift,
+                            "ref_count": ref_count,
+                            "shift": shift,
+                            "r_shift": r_shift,
+                            "alt_count": Counter(inserted_codon),
+                        }
+                        print(insertion_frame)
+                        # TODO: Count support the reference
+                        # print(set(inserted_codon), shift, r_shift)
+                        break
+                print(row["coor"], ref_sub_seq)
+                # print(row["coor"], row["indel"])
+
+        # shift = row["coor"] - gff_row["end"]
+
+        # TODO: How will you count supported codons
+        # NOTE: Considerring that Deletion is in coding region and deletion is one codon -  This is Tricky
+        # exit(0)
+        # coordinates_with_change = {21011: coordinates_with_change[21011]}
+        # print(coordinates_with_change)
+        # NOTE: Dropping the coodinates where ref bases are more 97%
+        # exit(0)
+
+        keys = set(coordinates_with_change)
+        # print(keys, len(keys))
+        # print(coordinates_with_change)
+        # exit(0)
+
+        for (
+            _,
+            row,
+        ) in (
+            gff_data.iterrows()
+        ):  # TODO: Invert the iterations with reported coordinate
+            # TODO: End coordinate might need to be included
+            selected_coordinates = keys & set(range(row["start"], row["end"]))
+            if selected_coordinates:
+                # TODO: Add count of codon. Ignore with ambigious nucleotide and gaps
+                # TODO: Check if there is any 3 base indels
+                for selected_coordinate in selected_coordinates:
+                    coordinates_with_change[selected_coordinate]["start"] = row["start"]
+                    coordinates_with_change[selected_coordinate]["end"] = row["end"]
+                    coordinates_with_change[selected_coordinate]["strand"] = row[
+                        "strand"
+                    ]
+                    shift = (selected_coordinate - row["start"]) % 3
+                    # print(shift)
+                    # exit(0)
+                    iter = samfile.pileup(
+                        rid,
+                        selected_coordinate,
+                        selected_coordinate + 1,
+                        ignore_orphans=ignore_orphans,
+                        min_mapping_quality=min_base_quality,
+                        min_base_quality=min_base_quality,
+                        ignore_overlaps=ignore_overlaps,
+                    )
+                    # TODO: Discuss with san to use codon count or nuc count to detect proportion
+                    total_codon_count = 0
+                    for pileupcol in iter:
+                        if pileupcol.pos != selected_coordinate:
+                            continue
+                        for pread in pileupcol.pileups:
+                            if not pread.is_del and not pread.is_refskip:
+                                codon = pread.alignment.query_sequence[
+                                    pread.query_position
+                                    - shift: pread.query_position
+                                    - shift
+                                    + 3
+                                ]
+                                # TODO: Count codon can keep the same count distribution as the same as bases
+                                if (codon in _codon_table) and (
+                                    pread.alignment.query_sequence[pread.query_position]
+                                    in coordinates_with_change[pileupcol.pos]["bases"]
+                                ):
+
+                                    if (
+                                        codon
+                                        not in coordinates_with_change[pileupcol.pos][
+                                            "bases"
+                                        ][
+                                            pread.alignment.query_sequence[
+                                                pread.query_position
+                                            ]
+                                        ][
+                                            "codon_count"
+                                        ]
+                                    ):
+                                        coordinates_with_change[pileupcol.pos]["bases"][
+                                            pread.alignment.query_sequence[
+                                                pread.query_position
+                                            ]
+                                        ]["codon_count"][codon] = 0
+                                    coordinates_with_change[pileupcol.pos]["bases"][
+                                        pread.alignment.query_sequence[
+                                            pread.query_position
+                                        ]
+                                    ]["codon_count"][codon] += 1
+                                    total_codon_count += 1
+
+                                elif len(codon) > 3:
+                                    print(codon, selected_coordinate)
+
+                        if pileupcol.pos == selected_coordinate:
+                            # print(
+                            # selected_coordinate,
+                            # coordinates_with_change[selected_coordinate],
+                            # )
+                            # exit(0)
+                            break
+                    # TODO: Removing less less common codons
+                    coordinates_with_change[selected_coordinate][
+                        "total_codon_count"
+                    ] = total_codon_count
+
+                    # print(
+                    # selected_coordinate,
+                    # coordinates_with_change[selected_coordinate],
+                    # )
+                    # exit(0)
+
+                    # row["strand"] = "+"
+                    ref_base = sequences[rid][selected_coordinate]
+                    ref_codon = sequences[rid][
+                        selected_coordinate - shift: selected_coordinate - shift + 3
+                    ]  # TODO: Integrate the ref codon in dictionary itself
+                    # print(ref_codon, "Anmol")
+                    # NOTE: Reverse complement
+                    if row["strand"] == "-":
+                        ref_codon = str(
+                            Seq.Seq(ref_codon).reverse_complement())
+                        ref_base = str(Seq.Seq(ref_base).reverse_complement())
+                        # print(ref_codon)
+                        for k in coordinates_with_change[selected_coordinate]["bases"]:
+                            # TODO: base need to be reverse complemented
+
+                            codon_count = coordinates_with_change[selected_coordinate][
+                                "bases"
+                            ][k]["codon_count"]
+                            new_codon_count = {}
+                            for codon in codon_count:
+                                new_codon_count[
+                                    str(Seq.Seq(codon).reverse_complement())
+                                ] = codon_count[codon]
+
+                            coordinates_with_change[selected_coordinate]["bases"][k][
+                                "codon_count"
+                            ] = new_codon_count
+                        new_base = {}
+                        for k in coordinates_with_change[selected_coordinate]["bases"]:
+                            new_base[
+                                str(Seq.Seq(k).reverse_complement())
+                            ] = coordinates_with_change[selected_coordinate]["bases"][k]
+                        coordinates_with_change[selected_coordinate]["bases"] = new_base
+                    coordinates_with_change[selected_coordinate][
+                        "ref_codon"
+                    ] = ref_codon
+                    coordinates_with_change[selected_coordinate]["codon_pos"] = (
+                        selected_coordinate - shift
+                    )
+                    coordinates_with_change[selected_coordinate]["ref_base"] = ref_base
+                    # print(
+                    # selected_coordinate,
+                    # coordinates_with_change[selected_coordinate],
+                    # )
+                    # if selected_coordinate == 21215:
+                    # print(row["start"])
+                    # exit(0)
+
+                    if row["strand"] == "+":
+
+                        amino_pos = (selected_coordinate -
+                                     row["start"]) // 3 + 1
+
+                    else:
+                        amino_pos = (row["end"] - selected_coordinate) // 3 + 1
+
+                    coordinates_with_change[selected_coordinate][
+                        "amino_pos"
+                    ] = amino_pos
+                    # print(
+                    # selected_coordinate,
+                    # coordinates_with_change[selected_coordinate],
+                    # )
+                    # exit(0)
+
+        print(deletion_frame)
+        delete_final_table = {
+            "Amino Acid Change": [],
+            "Nucleotide Change": [],
+            "Codon Change": [],
+            "Sample": [],
+            "alt_codon": [],
+            "alt_codon_count": [],
+            # "total_codon_count": [],
+            "coor": [],
+            "ref_codon": [],
+            "ref_codon_count": [],
+            # "ref_codon_position":[]
+        }
+        # for coor in deletion_frame:
+        # for info in deletion_frame[coor]:
+        # for inserted_seq in deletion_frame[coor]["alt_count"]:
+        # delete_final_table["Amino Acid Change"].append(
+        # f"{Seq.Seq(deletion_frame[coor]['ref']).translate()}{deletion_frame[coor]['amino_pos']}{Seq.Seq(inserted_seq).translate()}"
+        # )
+        # delete_final_table["Codon Change"].append(
+        # f"{coor+1}{deletion_frame[coor]['ref']}>{inserted_seq}"
+        # )
+        # delete_final_table["Nucleotide Change"].append(
+        # f"{coor+1+deletion_frame[coor]['shift']}{deletion_frame[coor]['ref'][deletion_frame[coor]['shift']:-1*deletion_frame[coor]['r_shift'] if deletion_frame[coor]['shift'] else len(deletion_frame[coor]['ref'])]}>"
+        # )
+        # # delete_final_table["Codon Change"].append(f"{}{}>{}")
+        # delete_final_table["coor"].append(coor)
+        # delete_final_table["ref_codon"].append(deletion_frame[coor]["ref"])
+        # delete_final_table["ref_codon_count"].append(
+        # deletion_frame[coor]["ref_count"]
+        # )
+        # delete_final_table["Sample"].append(sample)
+        # delete_final_table["alt_codon"].append(inserted_seq)
+        # delete_final_table["alt_codon_count"].append(
+        # deletion_frame[coor]["alt_count"][inserted_seq]
+        # )
+
+        for coor in deletion_frame:
+            for info in deletion_frame[coor]:
+                print(coor, info)
+                for inserted_seq in info["alt_count"]:
+                    delete_final_table["Amino Acid Change"].append(
+                        f"{Seq.Seq(info['ref']).translate()}{info['amino_pos']}{Seq.Seq(inserted_seq).translate()}"
+                    )
+                    delete_final_table["Codon Change"].append(
+                        f"{coor+(1 if info['shift'] else 2)}{info['ref']}>{inserted_seq}"
+                    )
+                    delete_final_table["Nucleotide Change"].append(
+                        f"{coor+(1 if info['shift'] else 2) +(info['shift'] if info['strand']=='+' else info['r_shift'])}{info['ref'][info['shift']:-1*info['r_shift'] if info['shift'] else len(info['ref'])]}>"
+                    )
+                    # delete_final_table["Codon Change"].append(f"{}{}>{}")
+                    delete_final_table["coor"].append(coor)
+                    delete_final_table["ref_codon"].append(info["ref"])
+                    delete_final_table["ref_codon_count"].append(
+                        info["ref_count"])
+                    delete_final_table["Sample"].append(sample)
+                    delete_final_table["alt_codon"].append(inserted_seq)
+                    delete_final_table["alt_codon_count"].append(
+                        info["alt_count"][inserted_seq]
+                    )
+        delete_final_table = pd.DataFrame(delete_final_table)
+        delete_final_table = delete_final_table[
+            delete_final_table["alt_codon_count"]
+            >= alt_nuc_count
+            * (
+                delete_final_table["alt_codon_count"]
+                + delete_final_table["ref_codon_count"]
+            )
+        ]
+        if not delete_final_table.empty:
+            delete_final_table["codon_count"] = delete_final_table.apply(
+                lambda x: f"{x['ref_codon']}-{x['ref_codon_count']};{x['alt_codon']}-{x['alt_codon_count']}",
+                axis=1,
+            )
+        delete_final_table = delete_final_table.drop(
+            ["ref_codon", "ref_codon_count", "alt_codon", "alt_codon_count", "coor"],
+            axis=1,
+        )
+        all_changes.append(delete_final_table)
+        # print(delete_final_table)
+
+        # exit(0)
+        insert_final_table = {
+            "Amino Acid Change": [],
+            "Nucleotide Change": [],
+            "Codon Change": [],
+            "Sample": [],
+            "alt_codon": [],
+            "alt_codon_count": [],
+            # "total_codon_count": [],
+            "coor": [],
+            "ref_codon": [],
+            "ref_codon_count": [],
+            # "ref_codon_position":[]
+        }
+        for coor in insertion_frame:
+            for inserted_seq in insertion_frame[coor]["alt_count"]:
+                insert_final_table["Amino Acid Change"].append(
+                    f"{Seq.Seq(insertion_frame[coor]['ref']).translate()}{insertion_frame[coor]['amino_pos']}{Seq.Seq(inserted_seq).translate()}"
+                )
+                insert_final_table["Codon Change"].append(
+                    f"{coor+1}{insertion_frame[coor]['ref']}>{inserted_seq}"
+                )
+                insert_final_table["Nucleotide Change"].append(
+                    f"{coor+1+insertion_frame[coor]['shift']}>{inserted_seq[insertion_frame[coor]['shift']:len(inserted_seq)-1*insertion_frame[coor]['r_shift']]}"
+                )
+                # insert_final_table["Codon Change"].append(f"{}{}>{}")
+                insert_final_table["coor"].append(coor)
+                insert_final_table["ref_codon"].append(
+                    insertion_frame[coor]["ref"])
+                insert_final_table["ref_codon_count"].append(
+                    insertion_frame[coor]["ref_count"]
+                )
+                insert_final_table["Sample"].append(sample)
+                insert_final_table["alt_codon"].append(inserted_seq)
+                insert_final_table["alt_codon_count"].append(
+                    insertion_frame[coor]["alt_count"][inserted_seq]
+                )
+        insert_final_table = pd.DataFrame(insert_final_table)
+        insert_final_table = insert_final_table[
+            insert_final_table["alt_codon_count"]
+            >= alt_nuc_count
+            * (
+                insert_final_table["alt_codon_count"]
+                + insert_final_table["ref_codon_count"]
+            )
+        ]
+        print(insert_final_table, "test buddy")
+        if not insert_final_table.empty:
+            insert_final_table["codon_count"] = insert_final_table.apply(
+                lambda x: f"{x['ref_codon']}-{x['ref_codon_count']};{x['alt_codon']}-{x['alt_codon_count']}",
+                axis=1,
+            )
+        insert_final_table = insert_final_table.drop(
+            ["ref_codon", "ref_codon_count", "alt_codon", "alt_codon_count", "coor"],
+            axis=1,
+        )
+        all_changes.append(insert_final_table)
+
+        # print(insert_final_table, "Kiran")
+
+        ref_codon_count = {"coor": [], "ref_codon": [], "ref_codon_count": []}
+        final_table = {
+            "Amino Acid Change": [],
+            "Nucleotide Change": [],
+            "Codon Change": [],
+            "Sample": [],
+            "alt_codon": [],
+            "alt_codon_count": [],
+            "total_codon_count": [],
+            "coor": [],
+            "ref_codon": [],
+        }
+        for coor in coordinates_with_change:
+            bases = coordinates_with_change[coor]["bases"]
+            read_count = coordinates_with_change[coor]["read_count"]
+            ref_codon_bool = False
+            for base in bases:
+                codon_counts = bases[base]["codon_count"]
+                for codon in codon_counts:
+                    if codon == coordinates_with_change[coor]["ref_codon"]:
+                        ref_codon_bool = True
+                        ref_codon_count["coor"].append(coor)
+                        ref_codon_count["ref_codon"].append(
+                            coordinates_with_change[coor]["ref_codon"]
+                        )
+                        ref_codon_count["ref_codon_count"].append(
+                            codon_counts[codon])
+                        continue
+                    if (base == coordinates_with_change[coor]["ref_base"]) or (
+                        _codon_table[coordinates_with_change[coor]
+                                     ["ref_codon"]]
+                        == _codon_table[codon]
+                    ):
+                        continue
+                    final_table["Amino Acid Change"].append(
+                        f"{_codon_table[coordinates_with_change[coor]['ref_codon']]}{coordinates_with_change[coor]['amino_pos']}{_codon_table[codon]}"
+                    )
+                    final_table["Nucleotide Change"].append(
+                        f'{coor}{coordinates_with_change[coor]["ref_base"]}>{base}'
+                    )
+                    final_table["Codon Change"].append(
+                        f'{coordinates_with_change[coor]["codon_pos"]}{coordinates_with_change[coor]["ref_codon"]}>{codon}'
+                    )
+                    final_table["Sample"].append(sample)
+                    final_table["alt_codon"].append(codon)
+                    final_table["alt_codon_count"].append(codon_counts[codon])
+                    final_table["total_codon_count"].append(
+                        coordinates_with_change[coor]["total_codon_count"]
+                    )
+                    final_table["coor"].append(coor)
+                    final_table["ref_codon"].append(
+                        coordinates_with_change[coor]["ref_codon"]
+                    )
+                    # print(
+                    # "Amino acid change",
+                    # f"{_codon_table[coordinates_with_change[coor]['ref_codon']]}{coordinates_with_change[coor]['amino_pos']}{_codon_table[codon]}",
+                    # )
+                    # print(
+                    # "Nucleotide change",
+                    # f'{coor}{coordinates_with_change[coor]["ref_base"]}>{base}',
+                    # )
+                    # print(
+                    # "Codon Change",
+                    # f'{coordinates_with_change[coor]["codon_pos"]}{coordinates_with_change[coor]["ref_codon"]}>{codon}',
+                    # )
+                    # print(sample)
+                    # print(coor)
+                    # print(base, read_count)
+                    # print(codon, codon_counts[codon])
+            if not ref_codon_bool:
+                ref_codon_count["coor"].append(coor)
+                ref_codon_count["ref_codon"].append(
+                    coordinates_with_change[coor]["ref_codon"]
+                )
+                ref_codon_count["ref_codon_count"].append(0)
+        final_table = pd.DataFrame(final_table)
+        ref_codon_count = pd.DataFrame(ref_codon_count)
+        final_table = final_table.merge(
+            ref_codon_count, on=["coor", "ref_codon"], how="inner"
+        )
+        final_table = final_table[
+            (final_table["total_codon_count"] >= min_seq_depth)
+            & (
+                final_table["alt_codon_count"]
+                > alt_nuc_count * final_table["total_codon_count"]
+            )
+        ]
+        if not final_table.empty:
+
+            final_table["codon_count"] = final_table[
+                ["ref_codon", "ref_codon_count", "alt_codon", "alt_codon_count"]
+            ].apply(
+                lambda x: f"{x['ref_codon']}-{x['ref_codon_count']};{x['alt_codon']}-{x['alt_codon_count']}",
+                axis=1,
+            )
+        final_table = final_table.drop(
+            [
+                "ref_codon",
+                "ref_codon_count",
+                "alt_codon",
+                "alt_codon_count",
+                "coor",
+                "total_codon_count",
+            ],
+            axis=1,
+        )
+
+        # print(final_table)
+        all_changes.append(final_table)
+    all_changes = pd.concat(all_changes)
+    all_changes = all_changes.pivot(
+        index=["Amino Acid Change", "Nucleotide Change", "Codon Change"],
+        columns="Sample",
+        values="codon_count",
+    ).reset_index()
+    print(all_changes)
+    all_changes.to_csv(f"all_changes.csv", sep="\t", index=False)
+    # print(ref_codon_count)
+    # exit(0)
+
+    # final_table = pd.DataFrame(final_table)
+    # final_table = final_table.pivot(
+    # index=["Amino Acid Change", "Nucleotide Change", "Codon Change"],
+    # columns="Samples",
+    # values="Codon Count",
+    # ).reset_index()
+
+    # print(final_table)
+    #  TODO: Try to create multiple tree and concat and then pivot
+    rmtree(tmp_dir)
+
+
+if __name__ == "__main__":
+    run()

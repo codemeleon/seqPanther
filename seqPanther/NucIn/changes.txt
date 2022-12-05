@@ -1,0 +1,63 @@
+SampleA	C:21301:A,C:23063:C,T:25312:G,G:22188:T
+SampleB	G:21301:A,C:23063:C,T:25312:G
+SampleC	T:21301:A,C:23063:C,T:25312:G,G:22188:T,T:27672:C
+SampleD	T:21301:A,A:23063:C,C:21633:CCCCT
+SampleE	G:21301:A,C:21453:C,G:26412:T
+SampleE	T:21301:A,C:21453:C,A:26412:T,ATCTAA:21764:------,C:23603:A
+
+
+
+Tracy 
+
+disputed-payment-response-inbox@barclays.com
+
+
+fxdocumentmanagment@barclayscorp.com 
+
+Title: Dispute Response Form
+
+
+
+
+
+Kind regards,
+
+Anmol Kiran
+Post Doctoral Bioinformatician
+Malawi-Liverpool-Wellcome Trust
+Clinical Research Programme
+PO Box 30096
+Chichiri, Blantyre 3
+Malawi
+Mob: +265 993936219
+
+
+
+Please find the attached Signed Dispute Response Form and screenshot of the Police Case Confirmation Number submitted on August 10th in Stellenbosch, South Africa. My card was swallowed in an FNB bank ATM in Stellenbosch. I am also attaching the screenshot of the phone call to FNB bank. I made the call to FNB as soon as I realized I was not getting my card back. However, I didn't receive much support from FNB other than a statement that I will not get the card back and a suggestion to cancel the card as soon as possible. 
+
+
+I tried to call Barclays on the phone. However, failed to reach any assisting member. Therefore, I went online and tried to cancel my card and I couldn't cancel. After that, I tried to transfer all the money from my current account to my savings account. Furthermore, I could transfer only £4,615.92 (of £7,159.90) but showing my current account balance £0 after transfer.  Later, I called Barclays again, requesting to cancel my debit card and send a new one. I ran out of call credits as I am on roaming in South Africa. Therefore, I made a request using multiple phone calls. I guess, before could transfer all the money to my saving account, my card details were stolen and used by the criminals.  Therefore, I couldn't transfer £2,543.98.  I received the notification about £2,543.98 on the next day, August 10th. I informed about these transactions (£2,543.98) to Barclays and local police. 
+
+
+
+Please let me know if additional information is required.
+Thank you for all your kind help. 
+
+
+- Font color and font type (Fixed, color fixed)
+
+    - Make consistant
+- Reduce the font size
+- Menu on side
+- Add another icon
+
+- Activate all the links
+- Add a sentence on resources 
+- 
+- Perhaps it would be more intuitive to use specific icons for external links, download etc. Eg we use fontawesome icons for the catalog: https://fontawesome.com/search?favorites=staff&s=solid%2Cbrands 
+- show icon for external link
+- Add an example file add link to help page
+
+
+
+Please find the attached signed response form and screenshot of the Police Case Confirmation Number submitted on August 10th in Stellenbosch, South Africa. My card was inflated from an FNB bank ATM in Stellenbosch. I am also attaching the screenshot of the phone call to FNB bank. I made the call as soon as I realized I wasn't getting my card back (within 5 minutes). However, we have received no support from FNB other than a statement that I will not get the card back and a suggestion to cancel the card as soon as possible. Please let me know if additional information is required.
