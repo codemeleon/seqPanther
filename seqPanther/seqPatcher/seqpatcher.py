@@ -35,7 +35,6 @@ from pandas._libs.lib import is_list_like
 warnings.filterwarnings("ignore")
 # warnings.simplefilter(action="ignore", category=FutureWarning)
 
-
 __version__ = "0.0.1"
 
 _s_gene_seq = """ATGTTTGTTTTTCTTGTTTTATTGCCACTAGTCTCTAGTCAGTGTGTT
@@ -155,15 +154,13 @@ def trim(mmcount, length, aln_df):
             continue
         min_, max_ = min_max(aln_df[aln_df[col] != "-"].index)
         mismach_locations = aln_df[aln_df[col].isin("-NRYKMSWBDHV")].index
-        mismach_locations = mismach_locations[
-            (mismach_locations >= min_) & (mismach_locations <= max_)
-        ]
+        mismach_locations = mismach_locations[(mismach_locations >= min_)
+                                              & (mismach_locations <= max_)]
         start_mismatch_location = mismach_locations[mismach_locations < length]
         if len(start_mismatch_location) >= mmcount:
             min_ = start_mismatch_location[-1] + 1
-        end_mismatch_locations = mismach_locations[
-            mismach_locations > (length(aln_df) - length)
-        ]
+        end_mismatch_locations = mismach_locations[mismach_locations > (
+            length(aln_df) - length)]
         if len(end_mismatch_locations) >= mmcount:
             max_ = end_mismatch_locations[0] - 1
         aln_df.loc[:min_, col] = "-"
@@ -261,10 +258,10 @@ def orient(seqfile, ref, tmp_fold):
     if seqfile.endswith(".ab1"):
         flb = path.split(seqfile)[1].rsplit(".", 1)[0]
         record = SeqIO.read(seqfile, "abi")
-        seq = "".join(
-            [chr(ascii_val)
-             for ascii_val in record.annotations["abif_raw"]["PBAS1"]]
-        )
+        seq = "".join([
+            chr(ascii_val)
+            for ascii_val in record.annotations["abif_raw"]["PBAS1"]
+        ])
         with open(f"{tmp_fold}/{flb}.fasta", "w") as fout:
             fout.write(f">tmp\n{seq}\n")
         seqfile = f"{tmp_fold}/{flb}.fasta"
@@ -278,11 +275,8 @@ def orient(seqfile, ref, tmp_fold):
         f"{tmp_fold}/{flb}.psl",
     ]  # Mapping against reference
     cmd(command)
-    blat_df = (
-        pd.read_table(f"{tmp_fold}/{flb}.psl", header=None)
-        .sort_values(0, ascending=False)
-        .drop_duplicates(9)
-    )
+    blat_df = (pd.read_table(f"{tmp_fold}/{flb}.psl", header=None).sort_values(
+        0, ascending=False).drop_duplicates(9))
     if len(blat_df) != 1:
         print(f"No match found of {seqfile}. Ignoring")
         return None
@@ -302,12 +296,10 @@ def ab1_to_fasta_wihout_ref(ab1_list, tmp_fold, res_fold):
         if seqfile.endswith(".ab1"):
             flb = path.split(seqfile)[1].split(".", 1)[0]
             record = SeqIO.read(seqfile, "abi")
-            seq = "".join(
-                [
-                    chr(ascii_val)
-                    for ascii_val in record.annotations["abif_raw"]["PBAS1"]
-                ]
-            )
+            seq = "".join([
+                chr(ascii_val)
+                for ascii_val in record.annotations["abif_raw"]["PBAS1"]
+            ])
             with open(f"{res_fold}/{flb}.fasta", "w") as fout:
                 fout.write(f">{flb}\n{seq}\n")
         else:
@@ -319,12 +311,10 @@ def ab1_to_fasta_wihout_ref(ab1_list, tmp_fold, res_fold):
             for num, seqfile in enumerate(ab1_list):
                 if seqfile.endswith(".ab1"):
                     record = SeqIO.read(seqfile, "abi")
-                    seq = "".join(
-                        [
-                            chr(ascii_val)
-                            for ascii_val in record.annotations["abif_raw"]["PBAS1"]
-                        ]
-                    )
+                    seq = "".join([
+                        chr(ascii_val) for ascii_val in
+                        record.annotations["abif_raw"]["PBAS1"]
+                    ])
                     if num:
                         seq = Seq.Seq(seq).reverse_complement()
                     fout.write(f">{flb}_{num}\n{seq}\n")
@@ -336,9 +326,8 @@ def ab1_to_fasta_wihout_ref(ab1_list, tmp_fold, res_fold):
             f"{tmp_fold}/{flb}.psl",
         ]  # Mapping against reference
         cmd(command)
-        blat_df = pd.read_table(f"{tmp_fold}/{flb}.psl", header=None).sort_values(
-            0, ascending=False
-        )
+        blat_df = pd.read_table(f"{tmp_fold}/{flb}.psl",
+                                header=None).sort_values(0, ascending=False)
         blat_df = blat_df[blat_df[9] != blat_df[13]].head(2)
         strands = list(set(blat_df[8].values))
         if len(strands) > 1:
@@ -347,7 +336,8 @@ def ab1_to_fasta_wihout_ref(ab1_list, tmp_fold, res_fold):
         strands = strands[0]
         if strands == "-":
             sequences = {}
-            for i, rec in enumerate(SeqIO.parse(f"{tmp_fold}/{flb}.fasta", "fasta")):
+            for i, rec in enumerate(
+                    SeqIO.parse(f"{tmp_fold}/{flb}.fasta", "fasta")):
                 if i:
                     seq = Seq.Seq(rec.seq).reverse_complement()
                 else:
@@ -391,8 +381,8 @@ def ab1seq(infile):
     nuc_df = {"nuc": [], "peak": []}
 
     for channel in zip(
-        record.annotations["abif_raw"]["PBAS1"],
-        record.annotations["abif_raw"]["PLOC1"],
+            record.annotations["abif_raw"]["PBAS1"],
+            record.annotations["abif_raw"]["PLOC1"],
     ):
         ambi_base = chr(channel[0])
         nuc_df["nuc"].append(ambi_base)
@@ -410,13 +400,12 @@ def ab1seq(infile):
     peak = nuc_df["peak"].apply(lambda x: np.mean(list(x.values()))).values
     mid_point = int(len(peak) / 2)
     spread = int(mid_point / 2.0)
-    peak_mean = np.mean(peak[mid_point - spread: mid_point + spread])
+    peak_mean = np.mean(peak[mid_point - spread:mid_point + spread])
     if peak_mean < 50:
         warnings.warn(
             f"Peak mean is {peak_mean} which is below 50 for {infile}. "
             "This may be due to low quality sequence. "
-            "Please check the quality of the sequence."
-        )
+            "Please check the quality of the sequence.")
 
     correct_peak_pos = np.where(peak > 0.2 * peak_mean)[0]
     # TODO: Autothreshold, check with the sliding window
@@ -465,12 +454,12 @@ def merge_base_peak(nuc_df, peak_dict):
     to_drop = ["idx"]
     for nuc in peak_dict:
         # Expecting sequence will not change while aligning, except insertion of gaps
-        peak_dict[nuc][f"{nuc}_idx"] = list(
-            nuc_df[nuc_df[f"{nuc}"] != "-"].index
-        )  # list(range(len(peak_dict[k]))
-        nuc_df = nuc_df.merge(
-            peak_dict[nuc], left_on="idx", right_on=f"{nuc}_idx", how="outer"
-        )
+        peak_dict[nuc][f"{nuc}_idx"] = list(nuc_df[
+            nuc_df[f"{nuc}"] != "-"].index)  # list(range(len(peak_dict[k]))
+        nuc_df = nuc_df.merge(peak_dict[nuc],
+                              left_on="idx",
+                              right_on=f"{nuc}_idx",
+                              how="outer")
         to_drop += [f"{nuc}_idx", f"{nuc}_nuc"]
 
     nuc_df = nuc_df.drop(to_drop, axis=1)
@@ -553,10 +542,10 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         idx_f = aln_df[aln_df["F"] != "-"].index
         idx_r = aln_df[aln_df["R"] != "-"].index
         u_range_f = list(useful_range(list(idx_f), gap))
-        aln_df.loc[: u_range_f[0] - 1, "F"] = "-"
+        aln_df.loc[:u_range_f[0] - 1, "F"] = "-"
         aln_df.loc[u_range_f[-1] + 1:, "F"] = "-"
         u_range_r = list(useful_range(list(idx_r), gap))
-        aln_df.loc[: u_range_r[0] - 1, "R"] = "-"
+        aln_df.loc[:u_range_r[0] - 1, "R"] = "-"
         aln_df.loc[u_range_r[-1] + 1:, "R"] = "-"
         locations_to_check = [
             u_range_f[0],
@@ -566,12 +555,12 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         ]
         for ltc in locations_to_check:
             for dir in ["F", "R"]:
-                if aln_df.loc[ltc, dir] == "-" and aln_df.loc[ltc, rev[dir]] != "-":
+                if aln_df.loc[ltc,
+                              dir] == "-" and aln_df.loc[ltc, rev[dir]] != "-":
                     if aln_df.loc[ltc, rev[dir]] != aln_df.loc[ltc, "ref"]:
                         if (aln_df.loc[ltc, rev[dir]] in _amb_base) and (
-                            aln_df.loc[ltc, "ref"]
-                            in _amb_base[aln_df.loc[ltc, rev[dir]]]
-                        ):
+                                aln_df.loc[ltc, "ref"]
+                                in _amb_base[aln_df.loc[ltc, rev[dir]]]):
                             pass
                         else:
                             aln_df.loc[:ltc, rev[dir]] = "-"
@@ -583,12 +572,12 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         ]
         for ltc in locations_to_check:
             for dir in ["F", "R"]:
-                if aln_df.loc[ltc, dir] == "-" and aln_df.loc[ltc, rev[dir]] != "-":
+                if aln_df.loc[ltc,
+                              dir] == "-" and aln_df.loc[ltc, rev[dir]] != "-":
                     if aln_df.loc[ltc, rev[dir]] != aln_df.loc[ltc, "ref"]:
                         if (aln_df.loc[ltc, rev[dir]] in _amb_base) and (
-                            aln_df.loc[ltc, "ref"]
-                            in _amb_base[aln_df.loc[ltc, rev[dir]]]
-                        ):
+                                aln_df.loc[ltc, "ref"]
+                                in _amb_base[aln_df.loc[ltc, rev[dir]]]):
                             pass
                         else:
                             aln_df.loc[ltc:, rev[dir]] = "-"
@@ -599,7 +588,7 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
             np.min([u_range_f[0], u_range_r[0]]),
             np.max([u_range_f[-1], u_range_r[-1]]),
         ]
-        aln_df.loc[: u_range[0] - 1, ["F", "R"]] = "-"
+        aln_df.loc[:u_range[0] - 1, ["F", "R"]] = "-"
         aln_df.loc[u_range[1] + 1:, ["F", "R"]] = "-"
         sang_type = "P"  # For paired
         # print(aln_df.head())
@@ -610,13 +599,13 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
             idx = aln_df[aln_df["F"] != "-"].index
             u_range = list(useful_range(list(idx), gap))
             sang_type = "F"
-            aln_df.loc[: u_range[0] - 1, "F"] = "-"
+            aln_df.loc[:u_range[0] - 1, "F"] = "-"
             aln_df.loc[u_range[1] + 1:, "F"] = "-"
         else:
             idx = aln_df[aln_df["R"] != "-"].index
             u_range = list(useful_range(list(idx), gap))
             sang_type = "R"
-            aln_df.loc[: u_range[0] - 1, "R"] = "-"
+            aln_df.loc[:u_range[0] - 1, "R"] = "-"
             aln_df.loc[u_range[1] + 1:, "R"] = "-"
 
     # TODO: This part need to be corrected
@@ -625,9 +614,8 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         if col not in ["F", "R"]:
             continue
         ambi_indexes = aln_df[aln_df[col].isin(list("NRYKMSWBDHV"))].index
-        ambi_indexes = ambi_indexes[
-            (ambi_indexes >= u_range[0]) & (ambi_indexes <= u_range[-1])
-        ]
+        ambi_indexes = ambi_indexes[(ambi_indexes >= u_range[0])
+                                    & (ambi_indexes <= u_range[-1])]
         # print(u_range, ambi_indexes, "anmol", u_range)
 
         if len(ambi_indexes):
@@ -640,7 +628,7 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                 u_range[-1] = ambi_index_right.min()
             # print(u_range, "testing")
             # exit()
-            aln_df.loc[: u_range[0] - 1, col] = "-"
+            aln_df.loc[:u_range[0] - 1, col] = "-"
             aln_df.loc[u_range[1] + 1:, col] = "-"
     # print(aln_df.loc[u_range_r[-1]: u_range_r[-1] + 30, "R"])
     # TODO: Avoid gap
@@ -650,12 +638,10 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
     if sang_type in "FR":
         # TODO: Select if both shows the same base
         aln_df["consensus"] = aln_df[sang_type].values
-        aln_df.loc[: u_range[0] - 1, "consensus"] = aln_df.loc[
-            : u_range[0] - 1, "ref"
-        ].values
-        aln_df.loc[u_range[1] + 1:, "consensus"] = aln_df.loc[
-            u_range[1] + 1:, "ref"
-        ].values
+        aln_df.loc[:u_range[0] - 1, "consensus"] = aln_df.loc[:u_range[0] - 1,
+                                                              "ref"].values
+        aln_df.loc[u_range[1] + 1:, "consensus"] = aln_df.loc[u_range[1] + 1:,
+                                                              "ref"].values
         # TODO: Create a file for ambigious nucleotides
         if not ambiguous:
             ambi_indexes = aln_df[aln_df[sang_type].isin(
@@ -672,7 +658,7 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                         base = bs
                 aln_df.loc[ambi_index, "consensus"] = base
 
-        insert_ranges = aln_df.loc[u_range[0]: u_range[1]]
+        insert_ranges = aln_df.loc[u_range[0]:u_range[1]]
         insert_ranges = insert_ranges[insert_ranges["ref"] == "-"].index
         if insert_ranges.any():
             insert_ranges = ranges(insert_ranges)
@@ -681,13 +667,13 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                     continue
                 else:
                     if (insert_range[1] - insert_range[0] + 1) < 3:
-                        aln_df.loc[insert_range[0]
-                            : insert_range[1], "consensus"] = "-"
+                        aln_df.loc[insert_range[0]:insert_range[1],
+                                   "consensus"] = "-"
                     else:
                         # TODO: Talk to san one more time
-                        aln_df.loc[insert_range[0]
-                            : insert_range[1], "consensus"] = "N"
-        del_ranges = aln_df.loc[u_range[0]: u_range[1]]
+                        aln_df.loc[insert_range[0]:insert_range[1],
+                                   "consensus"] = "N"
+        del_ranges = aln_df.loc[u_range[0]:u_range[1]]
         del_ranges = del_ranges[del_ranges[sang_type] == "-"].index
         if del_ranges.any():
             del_ranges = ranges(del_ranges)
@@ -696,12 +682,12 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                     continue
                 else:
                     if (del_range[1] - del_range[0] + 1) < 3:
-                        aln_df.loc[
-                            del_range[0]: del_range[1], "consensus"
-                        ] = aln_df.loc[del_range[0]: del_range[1], "ref"].values
+                        aln_df.loc[del_range[0]:del_range[1],
+                                   "consensus"] = aln_df.loc[
+                                       del_range[0]:del_range[1], "ref"].values
                     else:
-                        aln_df.loc[del_range[0]
-                            : del_range[1], "consensus"] = "N"
+                        aln_df.loc[del_range[0]:del_range[1],
+                                   "consensus"] = "N"
 
     else:
         mistmatched_indexes = aln_df[aln_df["F"] != aln_df["R"]].index
@@ -713,8 +699,7 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         f_end = np.max([f_range[0], r_range[0]])
         r_end = np.min([f_range[1], r_range[1]])
         mistmatched_indexes = mistmatched_indexes[
-            (mistmatched_indexes >= f_end) & (mistmatched_indexes <= r_end)
-        ]
+            (mistmatched_indexes >= f_end) & (mistmatched_indexes <= r_end)]
         for mismatched_index in mistmatched_indexes:
             # print(
             # "test",
@@ -723,59 +708,46 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
             # aln_df.loc[mismatched_index, "R"],
             # )
 
-            if (
-                aln_df.loc[mismatched_index, "F"] == "-"
-                or aln_df.loc[mismatched_index, "R"] == "-"
-            ):
+            if (aln_df.loc[mismatched_index, "F"] == "-"
+                    or aln_df.loc[mismatched_index, "R"] == "-"):
                 continue
-            if (
-                aln_df.loc[mismatched_index - 1, "F"] == "-"
-                and aln_df.loc[mismatched_index - 1, "R"]
-                == aln_df.loc[mismatched_index, "F"]
-            ):
+            if (aln_df.loc[mismatched_index - 1, "F"] == "-"
+                    and aln_df.loc[mismatched_index - 1,
+                                   "R"] == aln_df.loc[mismatched_index, "F"]):
                 aln_df.loc[mismatched_index, "F"] = "-"
-                aln_df.loc[mismatched_index - 1, "F"] = aln_df.loc[
-                    mismatched_index - 1, "R"
-                ]
+                aln_df.loc[mismatched_index - 1,
+                           "F"] = aln_df.loc[mismatched_index - 1, "R"]
                 aln_df.loc[mismatched_index - 1, "F_peak"] = [
                     aln_df.loc[mismatched_index, "F_peak"]
                 ]
 
                 aln_df.loc[mismatched_index, "F_peak"] = np.nan
 
-            elif (
-                aln_df.loc[mismatched_index + 1, "F"] == "-"
-                and aln_df.loc[mismatched_index + 1, "R"]
-                == aln_df.loc[mismatched_index, "F"]
-            ):
+            elif (aln_df.loc[mismatched_index + 1, "F"] == "-"
+                  and aln_df.loc[mismatched_index + 1,
+                                 "R"] == aln_df.loc[mismatched_index, "F"]):
                 aln_df.loc[mismatched_index, "F"] = "-"
-                aln_df.loc[mismatched_index + 1, "F"] = aln_df.loc[
-                    mismatched_index + 1, "R"
-                ]
+                aln_df.loc[mismatched_index + 1,
+                           "F"] = aln_df.loc[mismatched_index + 1, "R"]
 
                 aln_df.loc[mismatched_index + 1, "F_peak"] = [
                     aln_df.loc[mismatched_index, "F_peak"]
                 ]
                 aln_df.loc[mismatched_index, "F_peak"] = np.nan
 
-            if (
-                aln_df.loc[mismatched_index - 1, "R"] == "-"
-                and aln_df.loc[mismatched_index - 1, "F"]
-                == aln_df.loc[mismatched_index, "R"]
-            ):
+            if (aln_df.loc[mismatched_index - 1, "R"] == "-"
+                    and aln_df.loc[mismatched_index - 1,
+                                   "F"] == aln_df.loc[mismatched_index, "R"]):
                 aln_df.loc[mismatched_index, "R"] = "-"
-                aln_df.loc[mismatched_index - 1, "R"] = aln_df.loc[
-                    mismatched_index - 1, "F"
-                ]
+                aln_df.loc[mismatched_index - 1,
+                           "R"] = aln_df.loc[mismatched_index - 1, "F"]
                 aln_df.loc[mismatched_index - 1, "R_peak"] = [
                     aln_df.loc[mismatched_index, "R_peak"]
                 ]
                 aln_df.loc[mismatched_index, "R_peak"] = np.nan
-            elif (
-                aln_df.loc[mismatched_index + 1, "R"] == "-"
-                and aln_df.loc[mismatched_index + 1, "F"]
-                == aln_df.loc[mismatched_index, "R"]
-            ):
+            elif (aln_df.loc[mismatched_index + 1, "R"] == "-"
+                  and aln_df.loc[mismatched_index + 1,
+                                 "F"] == aln_df.loc[mismatched_index, "R"]):
                 # print(
                 # mismatched_index,
                 # aln_df.loc[mismatched_index + 1, "R"],
@@ -784,9 +756,8 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                 # "TEsting",
                 # )
                 aln_df.loc[mismatched_index, "R"] = "-"
-                aln_df.loc[mismatched_index + 1, "R"] = aln_df.loc[
-                    mismatched_index + 1, "F"
-                ]
+                aln_df.loc[mismatched_index + 1,
+                           "R"] = aln_df.loc[mismatched_index + 1, "F"]
                 aln_df.loc[mismatched_index + 1, "R_peak"] = [
                     aln_df.loc[mismatched_index, "R_peak"]
                 ]
@@ -795,41 +766,39 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
 
         mistmatched_indexes = aln_df[aln_df["F"] != aln_df["R"]].index
         mistmatched_indexes = mistmatched_indexes[
-            (mistmatched_indexes >= f_end) & (mistmatched_indexes <= r_end)
-        ]
+            (mistmatched_indexes >= f_end) & (mistmatched_indexes <= r_end)]
 
         # Corrections around single nucleotide indels
         # print(f_range, "abd", r_range, f_end, r_end, "KK")
         for mismatched_index in mistmatched_indexes:
             for rv in rev:
 
-                if (
-                    (aln_df.loc[mismatched_index, f"{rv}"] == "-")
-                    & (aln_df.loc[mismatched_index - 1, f"{rv}"] != "-")
-                    & (aln_df.loc[mismatched_index + 1, f"{rv}"] != "-")
-                ):
-                    if aln_df.loc[mismatched_index, f"{rev[rv]}"] not in _amb_base:
-                        aln_df.loc[mismatched_index, f"{rv}"] = aln_df.loc[
-                            mismatched_index, f"{rev[rv]}"
-                        ]
+                if ((aln_df.loc[mismatched_index, f"{rv}"] == "-")
+                        & (aln_df.loc[mismatched_index - 1, f"{rv}"] != "-")
+                        & (aln_df.loc[mismatched_index + 1, f"{rv}"] != "-")):
+                    if aln_df.loc[mismatched_index,
+                                  f"{rev[rv]}"] not in _amb_base:
+                        aln_df.loc[mismatched_index,
+                                   f"{rv}"] = aln_df.loc[mismatched_index,
+                                                         f"{rev[rv]}"]
                     else:
-                        if (
-                            aln_df.loc[mismatched_index + 1, f"{rev[rv]}"]
-                            == aln_df.loc[mismatched_index - 1, f"{rev[rv]}"]
-                        ) and (
-                            aln_df.loc[mismatched_index + 1, f"{rev[rv]}"]
-                            in _amb_base[aln_df.loc[mismatched_index, f"{rev[rv]}"]]
-                        ):
-                            aln_df.loc[mismatched_index, f"{rv}"] = aln_df.loc[
-                                mismatched_index + 1, f"{rev[rv]}"
-                            ]
-                            aln_df.loc[mismatched_index, f"{rev[rv]}"] = aln_df.loc[
-                                mismatched_index + 1, f"{rev[rv]}"
-                            ]
+                        if (aln_df.loc[mismatched_index + 1, f"{rev[rv]}"]
+                                == aln_df.loc[mismatched_index - 1,
+                                              f"{rev[rv]}"]
+                            ) and (aln_df.loc[mismatched_index + 1,
+                                              f"{rev[rv]}"]
+                                   in _amb_base[aln_df.loc[mismatched_index,
+                                                           f"{rev[rv]}"]]):
+                            aln_df.loc[mismatched_index,
+                                       f"{rv}"] = aln_df.loc[mismatched_index +
+                                                             1, f"{rev[rv]}"]
+                            aln_df.loc[mismatched_index,
+                                       f"{rev[rv]}"] = aln_df.loc[
+                                           mismatched_index + 1, f"{rev[rv]}"]
                         else:
-                            aln_df.loc[mismatched_index, f"{rv}"] = aln_df.loc[
-                                mismatched_index, f"{rev[rv]}"
-                            ]
+                            aln_df.loc[mismatched_index,
+                                       f"{rv}"] = aln_df.loc[mismatched_index,
+                                                             f"{rev[rv]}"]
                             # TODO: insert a variable inticating that only on was present
 
         # TODO: Mismach near ends
@@ -840,11 +809,10 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         rep_paired_base_fn = partial(rep_paired_base, ambiguous=ambiguous)
         aln_df["consensus"] = aln_df.apply(rep_paired_base_fn, axis=1)
 
-        insert_ranges = aln_df.loc[u_range[0]: u_range[1]]
-        insert_ranges = insert_ranges[
-            (insert_ranges["ref"] == "-")
-            & ((insert_ranges["F"] != "-") & (insert_ranges["R"] != "-"))
-        ].index
+        insert_ranges = aln_df.loc[u_range[0]:u_range[1]]
+        insert_ranges = insert_ranges[(insert_ranges["ref"] == "-")
+                                      & ((insert_ranges["F"] != "-")
+                                         & (insert_ranges["R"] != "-"))].index
         if insert_ranges.any():
             insert_ranges = ranges(insert_ranges)
             for insert_range in insert_ranges:
@@ -852,18 +820,17 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                     continue
                 else:
                     if (insert_range[1] - insert_range[0] + 1) < 3:
-                        aln_df.loc[insert_range[0]
-                            : insert_range[1], "consensus"] = "-"
+                        aln_df.loc[insert_range[0]:insert_range[1],
+                                   "consensus"] = "-"
                     else:
                         # TODO: Talk to san one more time
-                        aln_df.loc[insert_range[0]
-                            : insert_range[1], "consensus"] = "N"
+                        aln_df.loc[insert_range[0]:insert_range[1],
+                                   "consensus"] = "N"
 
-        del_ranges = aln_df.loc[u_range[0]: u_range[1]]
-        del_ranges = del_ranges[
-            (del_ranges["ref"] != "-")
-            & ((del_ranges["F"] == "-") & (del_ranges["R"] == "-"))
-        ].index
+        del_ranges = aln_df.loc[u_range[0]:u_range[1]]
+        del_ranges = del_ranges[(del_ranges["ref"] != "-")
+                                & ((del_ranges["F"] == "-")
+                                   & (del_ranges["R"] == "-"))].index
         if del_ranges.any():
             del_ranges = ranges(del_ranges)
             for del_range in del_ranges:
@@ -871,21 +838,19 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                     continue
                 else:
                     if (del_range[1] - del_range[0] + 1) < 3:
-                        aln_df.loc[
-                            del_range[0]: del_range[1], "consensus"
-                        ] = aln_df.loc[del_range[0]: del_range[1], "ref"].values
+                        aln_df.loc[del_range[0]:del_range[1],
+                                   "consensus"] = aln_df.loc[
+                                       del_range[0]:del_range[1], "ref"].values
                     else:
-                        aln_df.loc[del_range[0]
-                            : del_range[1], "consensus"] = "N"
+                        aln_df.loc[del_range[0]:del_range[1],
+                                   "consensus"] = "N"
     consesus_range = aln_df[aln_df["consensus"] != "-"].index
     consensus_range = np.min(consesus_range), np.max(consesus_range)
 
-    aln_df.loc[: consensus_range[0] - 1, "consensus"] = aln_df.loc[
-        : consensus_range[0] - 1, "ref"
-    ]
-    aln_df.loc[consensus_range[1] + 1:, "consensus"] = aln_df.loc[
-        consensus_range[1] + 1:, "ref"
-    ]
+    aln_df.loc[:consensus_range[0] - 1,
+               "consensus"] = aln_df.loc[:consensus_range[0] - 1, "ref"]
+    aln_df.loc[consensus_range[1] + 1:,
+               "consensus"] = aln_df.loc[consensus_range[1] + 1:, "ref"]
     gaps_index = aln_df[aln_df["consensus"] == "-"].index
     gaps_index = gaps_index[(gaps_index >= u_range[0])
                             & (gaps_index <= u_range[1])]
@@ -922,10 +887,9 @@ def fasta_map2ref(infile, gap, tmp_fold, n3, idb):
     mapped_index = aln_df[aln_df[flb] != "-"].index
     u_range = useful_range(mapped_index, gap)
     aln_df["concensus"] = "-"
-    aln_df.loc[: u_range[0], "concensus"] = aln_df.loc[: u_range[0], "ref"]
-    aln_df.loc[u_range[0]: u_range[1], "concensus"] = aln_df.loc[
-        u_range[0]: u_range[1], flb
-    ]
+    aln_df.loc[:u_range[0], "concensus"] = aln_df.loc[:u_range[0], "ref"]
+    aln_df.loc[u_range[0]:u_range[1],
+               "concensus"] = aln_df.loc[u_range[0]:u_range[1], flb]
     aln_df.loc[u_range[1]:, "concensus"] = aln_df.loc[u_range[1]:, "ref"]
     # TODO: Use cds value here
     if idb in ["del", "both"]:
@@ -933,13 +897,14 @@ def fasta_map2ref(infile, gap, tmp_fold, n3, idb):
         if len(del_sites):
             del_ranges = ranges(del_sites)
             del_ranges = [  # Selecting internal deletions
-                rng for rng in del_ranges if (rng[0] > u_range[0] & rng[1] < u_range[1])
+                rng for rng in del_ranges
+                if (rng[0] > u_range[0] & rng[1] < u_range[1])
             ]
             # Del codon is accepted when codon deletion is allowed else deletions are filled with gaps
             for rng in del_ranges:
                 if n3:
                     if (rng[1] - rng[0] + 1) % 3 != 0:
-                        aln_df.loc[rng[0]: rng[1], "concensus"] = "N"
+                        aln_df.loc[rng[0]:rng[1], "concensus"] = "N"
                         # aln_df.loc[
                         # rng[0]: rng[1], "ref"
                         # ]
@@ -953,16 +918,16 @@ def fasta_map2ref(infile, gap, tmp_fold, n3, idb):
         if len(ins_sites):
             ins_ranges = ranges(ins_sites)
             ins_ranges = [  # Internal inserts
-                rng for rng in ins_ranges if (rng[0] > u_range[0] & rng[1] < u_range[1])
+                rng for rng in ins_ranges
+                if (rng[0] > u_range[0] & rng[1] < u_range[1])
             ]
             for rng in ins_ranges:
                 if n3:
                     if (rng[1] - rng[0] + 1) % 3 != 0:
                         aln_df.loc[
-                            rng[0]: rng[1], "concensus"
-                        ] = aln_df.loc[  # TODO: ask san whether he wants to insert Ns or leave reported nucletides
-                            rng[0]: rng[1], "ref"
-                        ]
+                            rng[0]:rng[1],
+                            "concensus"] = aln_df.loc[  # TODO: ask san whether he wants to insert Ns or leave reported nucletides
+                                rng[0]:rng[1], "ref"]
                 # else:
                 # aln_df.loc[rng[0]: rng[1], "concensus"] = aln_df.loc[
                 # rng[0]: rng[1], "ref"
@@ -999,9 +964,8 @@ def ab1_2seq_map2ref(infiles, gap, tmp_fold):  # , amb, at, res_fold):
     for k in ab1seq_dfs:
         ab1seq_dfs[k].columns = [f"{k}_{col}" for col in ab1seq_dfs[k].columns]
 
-    aln_with_peak = merge_base_peak(
-        aln_df_with_ref(tsequences, flb, tmp_fold), ab1seq_dfs
-    )
+    aln_with_peak = merge_base_peak(aln_df_with_ref(tsequences, flb, tmp_fold),
+                                    ab1seq_dfs)
     # exit()
     # add file names as well, amb, at, res_fold)
     aln_with_peak, u_range = aln_clean(aln_with_peak, gap)
@@ -1019,7 +983,12 @@ def ab1_2seq_map2ref(infiles, gap, tmp_fold):  # , amb, at, res_fold):
 
 
 def ab2fasta(
-    sang_dict, tmp_fold, gap, key, n3, idb  # , bc="neigh"
+    sang_dict,
+    tmp_fold,
+    gap,
+    key,
+    n3,
+    idb  # , bc="neigh"
 ):  # Base criteria, max, neighbors, mixed # Inputfiles paired and none paired
     # sanger_outputs, tmp_fold, gap
     """Retains fasta and converts ab1 to fasta"""
@@ -1091,8 +1060,12 @@ def non_overlapping_ids(asseblies, ab1s):
     sanger_ab1_r_missing_assembly = ",".join(
         set(sanger_fasta) - set(sanger_ab1_r))
 
-    data_frame = {"assembly": [], "ab1_Forward": [],
-                  "ab1_Reverse": [], "fasta": []}
+    data_frame = {
+        "assembly": [],
+        "ab1_Forward": [],
+        "ab1_Reverse": [],
+        "fasta": []
+    }
     for assembly_id in assembly_ids:
         data_frame["assembly"].append(assembly_id)
 
@@ -1113,11 +1086,8 @@ def non_overlapping_ids(asseblies, ab1s):
 
     deduct = False
 
-    if (
-        sanger_ab1_f_missing_assembly
-        or sanger_ab1_r_missing_assembly
-        or sanger_fasta_missing_assembly
-    ):
+    if (sanger_ab1_f_missing_assembly or sanger_ab1_r_missing_assembly
+            or sanger_fasta_missing_assembly):
         deduct = True
         data_frame["assembly"].append("No Assembly")
         data_frame["ab1_Forward"].append(sanger_ab1_f_missing_assembly)
@@ -1128,13 +1098,12 @@ def non_overlapping_ids(asseblies, ab1s):
 
     # Check for overlap
     if deduct:
-        is_overlap = (
-            data_frame.iloc[:-1][["ab1_Forward",
-                                  "ab1_Reverse", "fasta"]].sum().sum()
-        )
+        is_overlap = (data_frame.iloc[:-1][[
+            "ab1_Forward", "ab1_Reverse", "fasta"
+        ]].sum().sum())
     else:
-        is_overlap = data_frame[["ab1_Forward",
-                                 "ab1_Reverse", "fasta"]].sum().sum()
+        is_overlap = data_frame[["ab1_Forward", "ab1_Reverse",
+                                 "fasta"]].sum().sum()
 
     if not is_overlap:
         return pd.DataFrame()
@@ -1171,11 +1140,8 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
         org_seq[rec.id] = str(rec.seq)
     blat_df = pd.read_table(psl_file, header=None)
 
-    blat_df = (
-        blat_df[blat_df[9] == blat_df[13]]
-        .sort_values(0, ascending=False)
-        .drop_duplicates(9)
-    )
+    blat_df = (blat_df[blat_df[9] == blat_df[13]].sort_values(
+        0, ascending=False).drop_duplicates(9))
 
     for _, row in blat_df.iterrows():
         start, end = list(map(int, sanger_seq_desc[row[9]].split()[1:]))
@@ -1195,11 +1161,9 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
         # n_range = [match.span() for match in range_gen]
         # print(my_start, my_end, start, end, n_range, "anmol")
 
-        org_seq[row[13]] = (
-            org_seq[row[13]][:my_start]
-            + sanger_seq[row[9]][start:end]
-            + org_seq[row[13]][my_end:]
-        )
+        org_seq[row[13]] = (org_seq[row[13]][:my_start] +
+                            sanger_seq[row[9]][start:end] +
+                            org_seq[row[13]][my_end:])
 
         # print("Please report at a bug at")
         # print("https://github.com/krisp-kwazulu-natal/" "seqPatcher/issues")
@@ -1208,7 +1172,8 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
             fout.write(f">{k}\n{org_seq[k]}\n")
 
 
-@click.command()
+@click.command(context_settings={'help_option_names': ["-h", "--help"]},
+               no_args_is_help=True)
 @click.option(
     "-s",
     "--sanger-ab1",
@@ -1303,7 +1268,8 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
     "-g",
     "--gap-allowed",
     "gap",
-    help="Minimum gap length between aligned fragment to consider the alignment continuous",
+    help=
+    "Minimum gap length between aligned fragment to consider the alignment continuous",
     type=int,
     default=10,
     show_default=True,
@@ -1312,7 +1278,8 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
     "-3",
     "--only-3-nuc",
     "n3",
-    help="Allow multiple 3 nucleotide InDels else replace with reference nucleotides or Ns  ",
+    help=
+    "Allow multiple 3 nucleotide InDels else replace with reference nucleotides or Ns  ",
     type=bool,
     default=True,
     show_default=True,
@@ -1331,7 +1298,8 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
     "-m",
     "--allow-ambi-nuc",
     "amb",
-    help="Allow ambigious nucleotide integration, if present in both forward and reverse sequences. Else nucleotide will be calculated.",
+    help=
+    "Allow ambigious nucleotide integration, if present in both forward and reverse sequences. Else nucleotide will be calculated.",
     type=bool,
     default=False,
     show_default=True,
@@ -1349,7 +1317,17 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
 # TODO: Suggest option to integrate ambigious nucleotide
 @click.version_option(__version__)
 def run(
-    sa_ab1, asf, outd, tab, ss, rf, ci, gap, n3, idb, amb  # , at
+        sa_ab1,
+        asf,
+        outd,
+        tab,
+        ss,
+        rf,
+        ci,
+        gap,
+        n3,
+        idb,
+        amb  # , at
 ):  # , fa, asb, al, bscpu,
     # print(sa_ab1, asf, outd, tab, ss, rf, cpu, ci, gap, n3, idb)
     """
@@ -1375,22 +1353,18 @@ def run(
     if not path.exists(sa_ab1) or not path.isdir(sa_ab1):
         exit(
             f"Given sanger data folder {sa_ab1} doesn't exist or path is not a folder."
-            " Exiting . . . . ."
-        )
+            " Exiting . . . . .")
 
     if not asf:
         exit("Assembly folder not given. Exiting . . . . . . .")
     if not path.exists(asf) or not path.isdir(asf):
         exit(
             f"Given assembly folder {asf} doesn't exist or path is not a folder."
-            " Exiting . . . . ."
-        )
+            " Exiting . . . . .")
 
     if not rf:
-        print(
-            "Reference sequence file is not given."
-            " Considering sars-cov-2 spike protein sequence as reference"
-        )
+        print("Reference sequence file is not given."
+              " Considering sars-cov-2 spike protein sequence as reference")
     elif not path.exists(rf) or not path.isfile(rf):
         print(
             f"Given reference file {rf} doesn't exist or path is not a file.")
@@ -1407,11 +1381,11 @@ def run(
     ref_path = f"{tmp_fold}/ref.fasta"
     makedirs(outd, exist_ok=True)
     for folder in [
-        "assemblies",
-        "sanger_raw",
-        "sanger_converted_fasta",
-        "sanger_final_fasta",
-        "tmp",
+            "assemblies",
+            "sanger_raw",
+            "sanger_converted_fasta",
+            "sanger_final_fasta",
+            "tmp",
     ]:
         makedirs(f"{tmp_fold}/{folder}", exist_ok=True)
 
@@ -1427,11 +1401,9 @@ def run(
                 if seq_count > 1:
                     if ci:
                         rmtree(tmp_fold)
-                    exit(
-                        f"{rf} contains more than 1 sequence. "
-                        "Expect only one."
-                        " Exiting."
-                    )
+                    exit(f"{rf} contains more than 1 sequence. "
+                         "Expect only one."
+                         " Exiting.")
                 seq_desc = rec.description.split()
                 # TODO: Include in future documentation
                 seq = rec.seq
@@ -1444,9 +1416,9 @@ def run(
             if not seq_count:
                 if ci:
                     rmtree(tmp_fold)
-                exit(
-                    f"{rf} contains 0 (zero) sequence. " "Expect only one." " Exiting."
-                )
+                exit(f"{rf} contains 0 (zero) sequence. "
+                     "Expect only one."
+                     " Exiting.")
 
     sanger_files = glob(f"{sa_ab1}/*")
     if not sanger_files:
@@ -1469,7 +1441,8 @@ def run(
 
     ss = "Anmol.fasta"
     for fl in glob(f"{sa_ab1}/*"):
-        if fl.endswith(".fasta"):  # TODO: Allow fa, faa, fna, and other fasta formats
+        if fl.endswith(
+                ".fasta"):  # TODO: Allow fa, faa, fna, and other fasta formats
             for rec in SeqIO.parse(fl, "fasta"):
                 with open(f"{tmp_fold}/tmp/{rec.id}.fasta", "w") as fout:
                     fout.write(f">{rec.id}\n{rec.seq}\n")
@@ -1480,7 +1453,8 @@ def run(
                     f"{tmp_fold}/tmp",
                 )
 
-                with open(f"{tmp_fold}/sanger_raw/{rec.id}.{l_r}.fasta", "w") as fout:
+                with open(f"{tmp_fold}/sanger_raw/{rec.id}.{l_r}.fasta",
+                          "w") as fout:
                     fout.write(f">{rec.id}\n{rec.seq}\n")
         if fl.endswith(".ab1"):
             fl_e = path.split(fl)[1]
@@ -1524,47 +1498,36 @@ def run(
     if not common_ids:
         if ci:
             rmtree(tmp_fold)
-        exit(
-            "Genome assembly and sanger sequencing data doesn't have common"
-            " id(s). Exiting..."
-        )
+        exit("Genome assembly and sanger sequencing data doesn't have common"
+             " id(s). Exiting...")
 
     # Copying assembly to tmp folder
     for fl in glob(f"{asf}/*.fasta"):
         for rec in SeqIO.parse(fl, "fasta"):
             if rec.id in common_ids:
-                with open(f"{tmp_fold}/assemblies/{rec.id}.fasta", "w") as fout:
+                with open(f"{tmp_fold}/assemblies/{rec.id}.fasta",
+                          "w") as fout:
                     fout.write(f">{rec.id}\n{rec.seq}\n")
 
-    seq_id_df = non_overlapping_ids(
-        f"{tmp_fold}/assemblies", f"{tmp_fold}/sanger_raw")
+    seq_id_df = non_overlapping_ids(f"{tmp_fold}/assemblies",
+                                    f"{tmp_fold}/sanger_raw")
 
-    seq_id_df = seq_id_df[
-        ~(
-            (seq_id_df["assembly"] == "No Assembly")
-            | (
-                (seq_id_df["ab1_Forward"] == 0)
-                & (seq_id_df["ab1_Reverse"] == 0)
-                & (seq_id_df["fasta"] == 0)
-            )
-        )
-    ]
+    seq_id_df = seq_id_df[~((seq_id_df["assembly"] == "No Assembly")
+                            | ((seq_id_df["ab1_Forward"] == 0)
+                               & (seq_id_df["ab1_Reverse"] == 0)
+                               & (seq_id_df["fasta"] == 0)))]
 
     if tab:
         seq_id_df.to_csv(tab, index=False)
     else:
         print(seq_id_df.to_csv(index=False))
 
-    seq_id_df = seq_id_df[
-        (
-            ((seq_id_df["ab1_Forward"] == 1) | (seq_id_df["ab1_Reverse"] == 1))
-            & (seq_id_df["fasta"] == 0)
-        )
-        | (
-            ((seq_id_df["ab1_Forward"] == 0) & (seq_id_df["ab1_Reverse"] == 0))
-            & (seq_id_df["fasta"] == 1)
-        )
-    ]
+    seq_id_df = seq_id_df[(((seq_id_df["ab1_Forward"] == 1) |
+                            (seq_id_df["ab1_Reverse"] == 1))
+                           & (seq_id_df["fasta"] == 0))
+                          | (((seq_id_df["ab1_Forward"] == 0) &
+                              (seq_id_df["ab1_Reverse"] == 0))
+                             & (seq_id_df["fasta"] == 1))]
     print("The patcher executed for ..")
     print(",".join(seq_id_df["assembly"]))
 

@@ -44,7 +44,8 @@ def str2coors(coorstr):
         )
 
 
-@click.command()
+@click.command(context_settings={'help_option_names': ["-h", "--help"]},
+               no_args_is_help=True)
 @click.option(
     "-bam",
     help="Bam files",

@@ -11,10 +11,10 @@ __email__ = "akiran@mlw.mw"
 __version__ = "0.0.1"
 
 
-@click.group()
-@click.option("-a", help="first value")
-def run(a):
-    """Wrapper for commands below"""
+@click.group(context_settings={'help_option_names': ["-h", "--help"]},
+             no_args_is_help=True)
+def run():
+    """A toolset for sequence exploration and manipulation."""
     pass
 
 

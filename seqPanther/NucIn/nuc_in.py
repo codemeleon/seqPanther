@@ -4,50 +4,44 @@ import click
 from Bio import SeqIO
 import pandas as pd
 from glob import glob
-from os import path
+from os import path, makedirs
 
 
-def parse_and_sort(coor_and_changes):
-    """
-    Parse the changes for each sequence id and sort them by position in decreasing order.
-    example input: SampleA	C:21301:A,C:23063:C,T:25312:G,G:22188:T
-    """
-    to_return = {}
-    with open(coor_and_changes) as f:
-        for line in f:
-            dt1 = line[:-1].split('\t')
-            changes = dt1[1].split(",")
-            changes_with_coor = {"coor": [], "from": [], "to": []}
-            for change in changes:
-                dt2 = change.split(":")
-                changes_with_coor["coor"].append(int(dt2[1]))
-                changes_with_coor["from"].append(dt2[0])
-                changes_with_coor["to"].append(dt2[2])
-            changes_with_coor = pd.DataFrame(changes_with_coor).sort_values(
-                by="coor", ascending=False)
-
-            to_return[dt1[0]] = changes_with_coor
-    return to_return
-
-
-@click.command()
-@click.option('--fasta',
-              '-f',
+@click.command(context_settings={'help_option_names': ["-h", "--help"]},
+               no_args_is_help=True)
+@click.option('-r',
+              '--ref',
+              "ref",
               help="Fasta file or folder",
-              type=click.File('r'),
+              default=None,
+              show_default=True,
+              type=str,
               required=True)
-@click.option('--tab',
+@click.option(
+    '-i',
+    '--sid',
+    "sid",
+    help="Reference sequence id. If not give, first will be selected",
+    default=None,
+    show_default=True,
+    type=str)
+@click.option('--tabd',
               '-t',
-              help="Nucletide substitution table",
-              type=click.File('r'),
+              "tabd",
+              help="Nucletide substitution table folder",
+              default=None,
+              show_default=True,
+              type=str,
               required=True)
-@click.option('--outfile',
+@click.option('--outd',
               '-o',
-              help="Output fasta file",
-              type=click.File('w'),
-              default="output.fasta",
+              "outd",
+              help="Output directory",
+              default=".",
+              show_default=True,
+              type=str,
               required=True)
-def run(fasta, tab, outfile):
+def run(ref, sid, tabd, outd):
     """
     Integrate changes in nucleotide sequences.\n
     fasta: file for folder containing fasta files name ending with .fasta\n
@@ -57,34 +51,42 @@ def run(fasta, tab, outfile):
 
     """
 
-    important_ids = parse_and_sort(tab)
+    # important_ids = parse_and_sort(tab)
+    makedirs(outd, exist_ok=True)
 
-    sequences = {}
+    seq = None
 
-    if path.isfile(fasta):
-        for rec in SeqIO.parse(fasta, 'fasta'):
-            if rec.id in important_ids:
+    if path.isfile(ref):
+        for rec in SeqIO.parse(ref, 'fasta'):
+            if not sid:
                 seq = rec.seq
-                for _, row in important_ids[rec.id].iterrows():
-                    seq = seq[:row["coor"]] + row["to"] + seq[
-                        row["coor"] + 1:]  # TODO: check if this is correct
-                sequences[rec.id] = seq
-            else:
+                break
+            if rec.id == sid:
+                seq = rec.seq
+                break
+    if not seq:
+        exit(f"No sequence found in {ref} file")
 
-                sequences[rec.id] = list(rec.seq)
-    else:
-        for fl in glob("*.fasta"):
-            for rec in SeqIO.parse(fl, 'fasta'):
-                if rec.id in important_ids:
-                    seq = rec.seq
-                    for _, row in important_ids[rec.id].iterrows():
-                        seq = seq[:row["coor"]] + row["to"] + seq[
-                            row["coor"] + 1:]  # TODO: check if this is correct
-                else:
-                    sequences[rec.id] = list(rec.seq)
-    for sid in sequences:
-        outfile.write(f">{sid}\n{sequences[sid]}\n")
-    # TODO: Merge the details
+    for fl in glob(f"{tabd}/*.tsv"):
+        df = pd.read_table(fl)
+
+        tdf = df[df["type"] == "sub"]
+        for _, row in tdf.iterrows():
+            seq = seq[:row['coor']] + \
+                row['sub'].split(":")[1]+seq[row['coor']+1:]
+
+        tdf = df[df["type"] == "del"]
+        for _, row in tdf.iterrows():
+            frag = row['sub'].split(':')[1]
+            seq = seq[:row["coor"]] + frag + seq[row['coor'] + len(frag):]
+
+        tdf = df[df["type"] == "ins"].sort_values("coor", ascending=False)
+        for _, row in tdf.iterrows():
+            frag = row['sub'].split(':')[1]
+            seq = seq[:row["coor"]] + frag + seq[row['coor']:]
+        flb = path.split(fl)[1].split(".tsv")[0]
+        with open(f"{outd}/{flb}.fasta", "w") as fout:
+            fout.write(f">{flb}\n{seq}\n")
 
 
 if __name__ == "__main__":
