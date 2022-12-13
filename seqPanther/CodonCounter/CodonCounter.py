@@ -129,13 +129,13 @@ def str2coors(coorstr):
     default=False,
     show_default=True,
 )
-@click.option(
-    "--sort_index",
-    help="Sort and index bam file",
-    type=bool,
-    default=False,
-    show_default=True,
-)
+@click.option("-p",
+              "--indel_percent",
+              "indel_percent",
+              help="Minimum reads supporting indel in percent, for plotting",
+              type=float,
+              default=5.0,
+              show_default=True)
 # TODO: Add samfiles relates conditions
 @click.option(
     "--min_seq_depth",
@@ -202,10 +202,10 @@ def run(
         output_type,  # TODO:Integrate in main code
         gff,
         ignore_orphans,
+        indel_percent,
         min_mapping_quality,
         min_base_quality,
         ignore_overlaps,
-        sort_index,
         min_seq_depth,
         alt_nuc_count,
         cpu,
@@ -296,7 +296,9 @@ def run(
                 nuc_indel_related.append(cng[1][1])
             indel = cng[1][1]
             ins = indel[indel["indel"] > 1]
+            ins = ins[ins["indel_read_pt"] > indel_percent]
             delt = indel[indel["indel"] < 1]
+            delt = delt[delt["indel_read_pt"] > indel_percent]
             for key, value in cng[-1].items():
                 fig = figure(figsize=(8, 6))
                 value.index = value.pos
@@ -333,6 +335,8 @@ def run(
                         alpha=0.4,
                         s=10)
                 title(key)
+                xlabel("Position in the reference")
+                ylabel("Read coverage")
                 legend()
 
                 yscale('log')
