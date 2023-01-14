@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import click
-from seqPanther.NucIn import nuc_in, organise
+from seqPanther.NucIn import organise, nuc_in
 from seqPanther.seqPatcher import seqpatcher
 from seqPanther.CodonCounter import CodonCounter
 
