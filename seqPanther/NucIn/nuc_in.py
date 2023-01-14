@@ -58,7 +58,16 @@ def ranges(i):
               show_default=True,
               type=str,
               required=True)
-def run(ref, rid, tabd, outd, consensus):
+@click.option(
+    '--merge',
+    '-m',
+    "merge",
+    help="Output directory",
+    default=False,
+    show_default=True,
+    type=bool,
+)
+def run(ref, rid, tabd, outd, consensus, merge):
     """
     Integrate changes in nucleotide sequences.\n
     fasta: file for folder containing fasta files name ending with .fasta\n
@@ -70,8 +79,6 @@ def run(ref, rid, tabd, outd, consensus):
 
     # NOTE: Expecting the /tmp folder is writable
     temp_dir = mkdtemp(prefix='nucin')
-    # makedirs(temp_dir, exist_ok=True)
-    # important_ids = parse_and_sort(tab)
     makedirs(outd, exist_ok=True)
     if not path.exists(consensus):
         exit(f"{consensus} doesn't exists.")
@@ -82,25 +89,30 @@ def run(ref, rid, tabd, outd, consensus):
         if not path.isfile(ref):
             exit(f"{ref} is not a file")
         try:
+            ref_seqs = SeqIO.parse(ref, "fasta")
+        except Exception as e:
+            print(e)
+            exit(f"{ref} is not fasta file.")
+        else:
             ref_fasta = None
-            for rec in SeqIO.parse(ref, "fasta"):
-                if rid == rec.id:
+            for rec in ref_seqs:
+                if rec.id == rid:
                     ref_fasta = rec.seq
                     break
             if not ref_fasta:
-                exit(f"Given reference {rid} is not in fasta file {ref}")
+                exit(f"Given reference '{rid}' is not in fasta file '{ref}'")
 
-        except:
-            exit(f"{ref} is not fasta file.")
+            pass
     else:
-        exit(f"Reference file path not given.")
+        exit("Reference file path not given.")
     sample_seq = {}
     is_fold = False
     if path.isfile(consensus):
         try:
             for rec in SeqIO.parse(consensus, "fasta"):
                 sample_seq[rec.id] = rec.seq
-        except:
+        except Exception as e:
+            print(e)
             exit(f"Consenus file {consensus} is not fasta.")
     else:
         is_fold = True
@@ -108,11 +120,13 @@ def run(ref, rid, tabd, outd, consensus):
             try:
                 for rec in SeqIO.parse(ss, "fasta"):
                     sample_seq[rec.id] = rec.seq
-            except:
+            except Exception as e:
+                print(e)
                 print(f"Consenus file {ss} is not fasta. ignoring...")
 
     for fl in glob(f"{tabd}/*.tsv"):
         df = pd.read_table(fl)
+        df['coor'] -= 1  # NOTE: Cor 0-based index
         for samp in df["Sample"].unique():
             with open(f"{temp_dir}/test.fasta", "w") as fout:
                 fout.write(f">ref\n{ref_fasta}\n>query\n{sample_seq[samp]}\n")
@@ -154,14 +168,20 @@ def run(ref, rid, tabd, outd, consensus):
                            "query"] += frag  # TODO: Merge the frag here
             seq = "".join(seq_df["query"].values).replace("-", "")
             sample_seq[samp] = seq
+    if merge:
 
-    if not is_fold:
-        with open(f"{outd}/{path.split(consensus)[1]}", "w") as fout:
-            for sid in sample_seq:
-                fout.write(f">{sid}\n{sample_seq[sid]}\n")
+        if not is_fold:
+            with open(f"{outd}/{path.split(consensus)[1]}", "w") as fout:
+                for sid in sample_seq:
+                    fout.write(f">{sid}\n{sample_seq[sid]}\n")
+        else:
+            with open(f"{outd}/{path.split(consensus)[1]}_merged.fasta",
+                      "w") as fout:
+                for sid in sample_seq:
+                    fout.write(f">{sid}\n{sample_seq[sid]}\n")
     else:
-        with open(f"{outd}/{path.split(consensus)[1]}.fasta", "w") as fout:
-            for sid in sample_seq:
+        for sid in sample_seq:
+            with open(f'{outd}/{sid}.fasta', 'w') as fout:
                 fout.write(f">{sid}\n{sample_seq[sid]}\n")
 
 
