@@ -86,13 +86,6 @@ def str2coors(coorstr):
     show_default=True,
 )
 @click.option(
-    "--output_type",
-    help="Output type",
-    type=click.Choice(["nuc", "codon", "both"]),
-    default="codon",
-    show_default=True,
-)
-@click.option(
     "-gff",
     help="Gff Annotation File",
     type=click.File("r"),
@@ -194,24 +187,9 @@ def str2coors(coorstr):
     default="indel_output.csv",
     show_default=True,
 )
-def run(
-        bam,
-        rid,
-        coor_range,
-        ref,
-        output_type,  # TODO:Integrate in main code
-        gff,
-        ignore_orphans,
-        indel_percent,
-        min_mapping_quality,
-        min_base_quality,
-        ignore_overlaps,
-        min_seq_depth,
-        alt_nuc_count,
-        cpu,
-        endlen,
-        codoncountfile,
-        subcountfile,
+def run(bam, rid, coor_range, ref, gff, ignore_orphans, indel_percent,
+        min_mapping_quality, min_base_quality, ignore_overlaps, min_seq_depth,
+        alt_nuc_count, cpu, endlen, codoncountfile, subcountfile,
         indelcountfile):
     """Expected to that bam file is sorted based on coordinate and indexed."""
     try:
@@ -246,12 +224,14 @@ def run(
     # reference sequence
     try:
         ref_seq = pyfaidx.Fasta(ref)
-    except:
-        exit(f"{ref} is not in fasta format. Exiting. . . .")
+    except Exception as e:
+        print(e)
+        exit()
     try:
         ref_seq = ref_seq[rid]
-    except:
-        exit(f"Reference ID {rid} is not in fasta file {ref}")
+    except Exception as e:
+        print(e)
+        exit()
 
     # Listing bam files
     bam_files = None
@@ -291,7 +271,6 @@ def run(
             "start": start,
             "end": end,
             "gff_data": gff_data,
-            "output_type": output_type,
             "ref": ref,
             "endlen": endlen,
             "ignore_orphans": ignore_orphans,
@@ -308,11 +287,9 @@ def run(
         pdf = bpdf.PdfPages("output.pdf")
 
         for cng in changes:
-            if output_type in ["codon", "both"]:
-                codon_related.append(cng[0])
-            if output_type in ["nuc", "both"]:
-                nuc_sub_related.append(cng[1][0])
-                nuc_indel_related.append(cng[1][1])
+            codon_related.append(cng[0])
+            nuc_sub_related.append(cng[1][0])
+            nuc_indel_related.append(cng[1][1])
             indel = cng[1][1]
             ins = indel[indel["indel"] > 1]
             ins = ins[ins["indel_read_pt"] > indel_percent]
@@ -363,71 +340,67 @@ def run(
 
         pdf.close()
 
-    if output_type in ["codon", "both"]:
+    codon_related = pd.concat(codon_related)
+    if len(codon_related):
 
-        codon_related = pd.concat(codon_related)
-        if len(codon_related):
+        codon_related.insert(0, "Reference ID", rid)
+        columns = list(codon_related.columns)
+        columns.remove("Sample")
+        columns = ["Sample"] + columns
 
-            codon_related.insert(0, "Reference ID", rid)
-            columns = list(codon_related.columns)
-            columns.remove("Sample")
-            columns = ["Sample"] + columns
+        codon_related = codon_related[columns]
+        del codon_related["total_codon_count"]
+        codon_related.to_csv(
+            codoncountfile,
+            index=False,
+            sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
 
-            codon_related = codon_related[columns]
-            del codon_related["total_codon_count"]
-            codon_related.to_csv(
-                codoncountfile,
-                index=False,
-                sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
+    nuc_sub_related = pd.concat(nuc_sub_related)
+    if len(nuc_sub_related):
+        nuc_sub_related = nuc_sub_related.rename(
+            columns={
+                'base_count': 'Nucleotide Frequency',
+                'base_pt': 'Nucleotide Percent',
+                'ref_base': 'Reference Nucleotide',
+                'sample': 'Sample'
+            })
+        nuc_sub_related.insert(0, "Reference ID", rid)
 
-    if output_type in ["nuc", "both"]:
-        nuc_sub_related = pd.concat(nuc_sub_related)
-        if len(nuc_sub_related):
-            nuc_sub_related = nuc_sub_related.rename(
+        nuc_sub_related[[
+            "Sample", "Reference ID", "pos", "Reference Nucleotide",
+            "read_count", "Nucleotide Frequency", "Nucleotide Percent"
+        ]].to_csv(subcountfile,
+                  index=False,
+                  sep="\t" if subcountfile.name.endswith(".tsv") else ",")
+    if len(nuc_indel_related):
+        nuc_indel_related = pd.concat(nuc_indel_related)
+        nuc_indel_related["tp"] = "ins"
+        nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "tp"] = "del"
+        nuc_indel_related["indelx"] = nuc_indel_related.apply(
+            lambda x:
+            f"{x['tp']}{x['seq']}:{x['indel_read_count']},read_count:{x['depth']}",
+            axis=1)
+        nuc_indel_related["indely"] = nuc_indel_related.apply(
+            lambda x: f"{'%0.2f' % x['indel_read_pt']}", axis=1)
+        nuc_indel_related = nuc_indel_related.drop(
+            [
+                "indel", "seq", "indel_read_count", "depth", "indel_read_pt",
+                "tp"
+            ],
+            axis=1).rename(
                 columns={
-                    'base_count': 'Nucleotide Frequency',
-                    'base_pt': 'Nucleotide Percent',
-                    'ref_base': 'Reference Nucleotide',
-                    'sample': 'Sample'
+                    "indelx": "Nucleotide Frequency",
+                    "indely": "Nucleotide Percent",
+                    "sample": "Sample"
                 })
-            nuc_sub_related.insert(0, "Reference ID", rid)
+        nuc_indel_related.insert(0, "Reference ID", rid)
 
-            nuc_sub_related[[
-                "Sample", "Reference ID", "pos", "Reference Nucleotide",
-                "read_count", "Nucleotide Frequency", "Nucleotide Percent"
-            ]].to_csv(subcountfile,
-                      index=False,
-                      sep="\t" if subcountfile.name.endswith(".tsv") else ",")
-        if len(nuc_indel_related):
-            nuc_indel_related = pd.concat(nuc_indel_related)
-            nuc_indel_related["tp"] = "ins"
-            nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "tp"] = "del"
-            nuc_indel_related["indelx"] = nuc_indel_related.apply(
-                lambda x:
-                f"{x['tp']}{x['seq']}:{x['indel_read_count']},read_count:{x['depth']}",
-                axis=1)
-            nuc_indel_related["indely"] = nuc_indel_related.apply(
-                lambda x: f"{'%0.2f' % x['indel_read_pt']}", axis=1)
-            nuc_indel_related = nuc_indel_related.drop(
-                [
-                    "indel", "seq", "indel_read_count", "depth",
-                    "indel_read_pt", "tp"
-                ],
-                axis=1).rename(
-                    columns={
-                        "indelx": "Nucleotide Frequency",
-                        "indely": "Nucleotide Percent",
-                        "sample": "Sample"
-                    })
-            nuc_indel_related.insert(0, "Reference ID", rid)
-
-            nuc_indel_related[[
-                "Sample", "Reference ID", "coor", "Nucleotide Frequency",
-                "Nucleotide Percent"
-            ]].to_csv(
-                indelcountfile,
-                index=False,
-                sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
+        nuc_indel_related[[
+            "Sample", "Reference ID", "coor", "Nucleotide Frequency",
+            "Nucleotide Percent"
+        ]].to_csv(indelcountfile,
+                  index=False,
+                  sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
 
 
 if __name__ == "__main__":
