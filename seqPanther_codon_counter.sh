@@ -1,9 +1,15 @@
 #!/bin/env bash
+pip uninstall -y seqPanther
+python setup.py clean
+python setup.py build
+python setup.py install
 
+#python /seqPanther/CodonCounter/CodonCounter.py \
 seqpanther codoncounter \
-	-bam examples/codoncounter/N47215.bam \
-	-rid sars-cov-2 \
+	-bam examples/codoncounter/ \
+	-rid NC_045512.2 \
 	-ref examples/codoncounter/NC_045512.2.fasta \
 	-gff examples/codoncounter/genemap.gff \
-	--output_type both \
-	-coor_range 21000-25000
+	-coor_range 21000-25000 \
+	-n 5 \
+	-e 0
