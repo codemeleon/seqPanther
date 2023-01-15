@@ -2,7 +2,7 @@
 import tempfile
 import itertools
 
-from os import path
+from os import path, makedirs
 from glob import glob
 from shutil import rmtree
 from functools import partial
@@ -214,6 +214,25 @@ def run(
         subcountfile,
         indelcountfile):
     """Expected to that bam file is sorted based on coordinate and indexed."""
+    try:
+        tp = path.split(codoncountfile.name)[0]
+        makedirs(tp, exist_ok=True) if tp else None
+    except Exception as e:
+        print(e)
+        exit()
+    try:
+        tp = path.split(subcountfile.name)[0]
+        makedirs(tp, exist_ok=True) if tp else None
+    except Exception as e:
+        print(e)
+        exit()
+
+    try:
+        tp = path.split(indelcountfile.name)[0]
+        makedirs(tp, exist_ok=True) if tp else None
+    except Exception as e:
+        print(e)
+        exit()
 
     gff_data = gff_reader.gff2tab(gff)  # gff to pandas dataframe
     if rid not in gff_data["seq_id"].unique():  # Checking presence of given id
