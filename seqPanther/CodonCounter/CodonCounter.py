@@ -13,7 +13,7 @@ import pandas as pd
 from Bio import SeqIO
 import pyfaidx
 import matplotlib.backends.backend_pdf as bpdf
-from pylab import *
+from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale
 
 from . import auto_cpu, bammer, coors_with_changes, gff_reader
 
@@ -122,14 +122,13 @@ def str2coors(coorstr):
     default=False,
     show_default=True,
 )
-@click.option("-p",
-              "--indel_percent",
-              "indel_percent",
-              help="Minimum reads supporting indel in percent, for plotting",
-              type=float,
-              default=5.0,
+@click.option("-a",
+              "--alt_codon_frac",
+              "alt_codon_frac",
+              help="Alternative amino acid fraction",
+              type=click.FloatRange(0.03, 0.97),
+              default=0.03,
               show_default=True)
-# TODO: Add samfiles relates conditions
 @click.option(
     "--min_seq_depth",
     help="Minimum sequencing depth at position to be considred",
@@ -139,8 +138,8 @@ def str2coors(coorstr):
 )
 @click.option(
     "--alt_nuc_count",
-    help="Minimum alternate nucleotide count fraction",
-    type=click.FloatRange(0.003, 0.5),
+    help="Minimum alternate nucleotide/indel read count fraction",
+    type=click.FloatRange(0.003, 0.97),
     default=0.03,
     show_default=True,
 )
@@ -187,7 +186,7 @@ def str2coors(coorstr):
     default="indel_output.csv",
     show_default=True,
 )
-def run(bam, rid, coor_range, ref, gff, ignore_orphans, indel_percent,
+def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         min_mapping_quality, min_base_quality, ignore_overlaps, min_seq_depth,
         alt_nuc_count, cpu, endlen, codoncountfile, subcountfile,
         indelcountfile):
@@ -279,6 +278,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, indel_percent,
             "min_base_quality": min_base_quality,
             "ignore_overlaps": ignore_overlaps,
             "alt_nuc_count": alt_nuc_count,
+            'alt_codon_frac': alt_codon_frac
         }
 
         changes = partial(coors_with_changes.coor_with_changes_run, params)
@@ -287,44 +287,45 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, indel_percent,
         pdf = bpdf.PdfPages("output.pdf")
 
         for cng in changes:
+            cng[1][0] = cng[1][0].rename(columns={'pos': 'coor'})
             codon_related.append(cng[0])
             nuc_sub_related.append(cng[1][0])
             nuc_indel_related.append(cng[1][1])
             indel = cng[1][1]
             ins = indel[indel["indel"] > 1]
-            ins = ins[ins["indel_read_pt"] > indel_percent]
             delt = indel[indel["indel"] < 1]
-            delt = delt[delt["indel_read_pt"] > indel_percent]
             for key, value in cng[-1].items():
+                if not len(value):
+                    continue
+                print(value)
                 fig = figure(figsize=(8, 6))
-                value.index = value.pos
+                value.index = value.coor
                 value = value.reindex(
-                    np.arange(value.pos.min(),
-                              value.pos.max() + 1)).fillna(0)
+                    np.arange(value.coor.min(),
+                              value.coor.max() + 1)).fillna(0)
                 fill_between(value.index,
                              y1=value.depth,
                              y2=0,
                              alpha=0.5,
                              color='gray',
                              linewidth=0)
-                value.to_csv("testxxx.csv")
-                sub = value[value.pos.isin(cng[1][0].pos)]
-                scatter(sub["pos"],
+                sub = value[value.coor.isin(cng[1][0].coor)]
+                scatter(sub["coor"],
                         sub["depth"],
                         color="green",
                         label="Substitutions",
                         alpha=0.4,
                         s=10)
 
-                inst = value[value.pos.isin(ins.coor)]
-                scatter(inst["pos"],
+                inst = value[value.coor.isin(ins.coor)]
+                scatter(inst["coor"],
                         inst["depth"],
                         color="red",
                         label="Insertions",
                         alpha=0.4,
                         s=10)
-                deltt = value[value.pos.isin(delt.coor)]
-                scatter(deltt["pos"],
+                deltt = value[value.coor.isin(delt.coor)]
+                scatter(deltt["coor"],
                         deltt["depth"],
                         color="blue",
                         label="Deletions",
@@ -357,6 +358,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, indel_percent,
 
     nuc_sub_related = pd.concat(nuc_sub_related)
     if len(nuc_sub_related):
+        nuc_sub_related['coor'] += 1
         nuc_sub_related = nuc_sub_related.rename(
             columns={
                 'base_count': 'Nucleotide Frequency',
@@ -367,7 +369,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, indel_percent,
         nuc_sub_related.insert(0, "Reference ID", rid)
 
         nuc_sub_related[[
-            "Sample", "Reference ID", "pos", "Reference Nucleotide",
+            "Sample", "Reference ID", "coor", "Reference Nucleotide",
             "read_count", "Nucleotide Frequency", "Nucleotide Percent"
         ]].to_csv(subcountfile,
                   index=False,
@@ -376,6 +378,10 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, indel_percent,
         nuc_indel_related = pd.concat(nuc_indel_related)
         nuc_indel_related["tp"] = "ins"
         nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "tp"] = "del"
+        # NOTE: Coordinate Correction
+        nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "coor"] += 2
+        nuc_indel_related.loc[nuc_indel_related["indel"] > 0, "coor"] += 1
+
         nuc_indel_related["indelx"] = nuc_indel_related.apply(
             lambda x:
             f"{x['tp']}{x['seq']}:{x['indel_read_count']},read_count:{x['depth']}",
