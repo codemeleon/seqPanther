@@ -67,6 +67,7 @@ def changed_coordinates(params, bam):
                                            pread.indel])
                     else:
                         indel_pos_type_size["seq"].append("")
+                    continue
 
                 if not pread.is_del and not pread.is_refskip:
                     if (pread.query_position < endlen
@@ -117,9 +118,7 @@ def coor_with_changes_run(params, bam):
     merged_table = None
     merged_table_nuc = None
     res = changed_coordinates(params, bam)
-    print(res[0])
     subs_table = sub_table(res[0], bam, params)
-    print(subs_table)
     indelframes = indel_frames(res[1], bam, params)
     merged_table = pd.concat([indelframes[0], indelframes[1], subs_table])
     flb = path.split(bam)[1].split(".")[0]
