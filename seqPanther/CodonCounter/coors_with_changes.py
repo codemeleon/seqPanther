@@ -123,13 +123,18 @@ def coor_with_changes_run(params, bam):
     merged_table = pd.concat([indelframes[0], indelframes[1], subs_table])
     flb = path.split(bam)[1].split(".")[0]
     res_indel = res[2]
-    res_indel.loc[res_indel["indel"] < 0,
-                  "seq"] = res_indel.loc[res_indel["indel"] < 0].apply(
-                      lambda x: params["sequences"][x["coor"] + 1:x["coor"] + 1
-                                                    - x["indel"]].seq,
-                      axis=1,
-                  )  # NOTE: refefence nucleotide for deletion events
-    res_indel["sample"] = flb
+    if len(res_indel):
+        res_indel.loc[res_indel["indel"] < 0,
+                      "seq"] = res_indel.loc[res_indel["indel"] < 0].apply(
+                          lambda x: params["sequences"][x["coor"] + 1:x["coor"]
+                                                        + 1 - x["indel"]].seq,
+                          axis=1,
+                      )  # NOTE: refefence nucleotide for deletion events
+        res_indel["sample"] = flb
+        res_indel["indel_read_pt"] = (res_indel["indel_read_count"] * 100.0 /
+                                      res_indel["depth"])
+    else:
+        res_indel = pd.DataFrame()
     # NOTE: Done till here
     res_sub = res[0]
     res_table = {"pos": [], "read_count": [], "base_count": [], "base_pt": []}
@@ -147,10 +152,10 @@ def coor_with_changes_run(params, bam):
         res_table["base_count"].append(",".join(base_count).replace(" ", ""))
         res_table["base_pt"].append(",".join(base_pt).replace(" ", ""))
     res_table = pd.DataFrame(res_table)
-    res_table["sample"] = flb
-    res_table["ref_base"] = res_table.apply(
-        lambda x: params["sequences"][x["pos"]].seq, axis=1)
-    res_indel["indel_read_pt"] = (res_indel["indel_read_count"] * 100.0 /
-                                  res_indel["depth"])
+    if len(res_table):
+        res_table["sample"] = flb
+        res_table["ref_base"] = res_table.apply(
+            lambda x: params["sequences"][x["pos"]].seq, axis=1)
+
     merged_table_nuc = [res_table, res_indel]
     return merged_table, merged_table_nuc, {flb: pd.DataFrame(res[-1])}
