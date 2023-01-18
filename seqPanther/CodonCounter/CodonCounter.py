@@ -33,10 +33,10 @@ def str2coors(coorstr):
         for coor in coorslist:
             if '-' in coor:
                 start, end = coor.split("-")
-                coorrange.append([int(start), int(end) + 1])
+                coorrange.append([int(start) - 1, int(end)])
                 pass
             else:
-                coorrange.append([int(coor), int(coor) + 1])
+                coorrange.append([int(coor) - 1, int(coor)])
         return coorrange
     except:
         exit(
@@ -292,12 +292,15 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
             nuc_sub_related.append(cng[1][0])
             nuc_indel_related.append(cng[1][1])
             indel = cng[1][1]
-            ins = indel[indel["indel"] > 1]
-            delt = indel[indel["indel"] < 1]
+            if len(indel):
+                ins = indel[indel["indel"] > 1]
+                delt = indel[indel["indel"] < 1]
+            else:
+                ins = pd.DataFrame()
+                delt = pd.DataFrame()
             for key, value in cng[-1].items():
                 if not len(value):
                     continue
-                print(value)
                 fig = figure(figsize=(8, 6))
                 value.index = value.coor
                 value = value.reindex(
@@ -316,21 +319,22 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
                         label="Substitutions",
                         alpha=0.4,
                         s=10)
-
-                inst = value[value.coor.isin(ins.coor)]
-                scatter(inst["coor"],
-                        inst["depth"],
-                        color="red",
-                        label="Insertions",
-                        alpha=0.4,
-                        s=10)
-                deltt = value[value.coor.isin(delt.coor)]
-                scatter(deltt["coor"],
-                        deltt["depth"],
-                        color="blue",
-                        label="Deletions",
-                        alpha=0.4,
-                        s=10)
+                if len(ins):
+                    inst = value[value.coor.isin(ins.coor)]
+                    scatter(inst["coor"],
+                            inst["depth"],
+                            color="red",
+                            label="Insertions",
+                            alpha=0.4,
+                            s=10)
+                if len(delt):
+                    deltt = value[value.coor.isin(delt.coor)]
+                    scatter(deltt["coor"],
+                            deltt["depth"],
+                            color="blue",
+                            label="Deletions",
+                            alpha=0.4,
+                            s=10)
                 title(key)
                 xlabel("Position in the reference")
                 ylabel("Read coverage")
@@ -374,8 +378,8 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         ]].to_csv(subcountfile,
                   index=False,
                   sep="\t" if subcountfile.name.endswith(".tsv") else ",")
+    nuc_indel_related = pd.concat(nuc_indel_related)
     if len(nuc_indel_related):
-        nuc_indel_related = pd.concat(nuc_indel_related)
         nuc_indel_related["tp"] = "ins"
         nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "tp"] = "del"
         # NOTE: Coordinate Correction
