@@ -81,12 +81,12 @@ def run(sub, indel, min_alt, outfolder):
                 sub,
                 usecols=[
                     "Sample",
-                    "pos",
+                    "coor",
                     "read_count",
                     "Reference Nucleotide",
                     "Nucleotide Percent",
                 ],
-            ).rename(columns={"pos": "coor"})
+            )
             sub["Nucleotide Percent"] = selected_nuc(
                 sub["Nucleotide Percent"].values, min_alt)
             sub = sub[~pd.isna(sub['Nucleotide Percent'])]
