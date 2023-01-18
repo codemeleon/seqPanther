@@ -9,7 +9,6 @@ import pysam
 
 def sub_table(coordinates_with_change, bam, params):
     sample = path.split(bam)[1]
-    alt_nuc_count = params["alt_nuc_count"]
     sequences = params["sequences"]
     rid = params["rid"]
     ignore_orphans = params["ignore_orphans"]
@@ -218,5 +217,4 @@ def sub_table(coordinates_with_change, bam, params):
         ],
         axis=1,
     )
-    print(final_table)
     return final_table
