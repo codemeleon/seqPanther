@@ -52,7 +52,7 @@ def indel_frames(indel_pos_type_size, bam, params):
                     r_shift = (3 - shift) % 3
                     ref_sub_seq = sequences[adjusted_coor -
                                             shift:adjusted_coor -
-                                            1 * row["indel"] + r_shift].seq
+                                            row["indel"] + r_shift].seq
                     amino_pos = (adjusted_coor -
                                  gff_row["start"]) // 3  # - 1 * row["indel"]
                     ref_count = 0
@@ -63,22 +63,28 @@ def indel_frames(indel_pos_type_size, bam, params):
                                 and pileupcol.pos - row["indel"] <
                                 pread.alignment.reference_end):
                             depth += 1
-                        if (pread.indel < 0) and (pread.indel == row["indel"]):
-                            read_sub_seq = pread.alignment.query_sequence[
-                                pread.query_position - shift +
-                                1:pread.query_position + r_shift + 1]
-                            if len(read_sub_seq) % 3 == 0:
-                                deleted_codon.append(read_sub_seq)
+                        if pread.indel:
+                            if (pread.indel < 0) and (pread.indel
+                                                      == row["indel"]):
+                                read_sub_seq = pread.alignment.query_sequence[
+                                    pread.query_position - shift +
+                                    1:pread.query_position + r_shift + 1]
+                                if len(read_sub_seq) % 3 == 0:
+                                    deleted_codon.append(read_sub_seq)
+                            continue
+
                         if not pread.is_refskip and not pread.is_del:
                             read_sub_seq = pread.alignment.query_sequence[
                                 pread.query_position - shift +
-                                1:pread.query_position - 1 * row["indel"] +
+                                1:pread.query_position - row["indel"] +
                                 r_shift + 1]
+                            # TODO: Check for indels in given surroundings, can be ignored
 
                             if read_sub_seq == ref_sub_seq:
                                 ref_count += 1
                     if pileupcol.pos not in deletion_frame:
                         deletion_frame[pileupcol.pos] = []
+
                     if gff_row["strand"] == "-":
                         amino_pos = ((gff_row["end"] - gff_row["start"]) // 3 -
                                      (len(ref_sub_seq) -
@@ -89,18 +95,32 @@ def indel_frames(indel_pos_type_size, bam, params):
                             deleted_codon[i] = Seq.Seq(
                                 codon).reverse_complement()
                         ref_sub_seq = Seq.Seq(ref_sub_seq).reverse_complement()
+                    deleted_codon = dict(Counter(deleted_codon))
+                    to_del = []
+                    for codon, val in deleted_codon.items():
+                        if val * 1. / depth < alt_codon_frac:
+                            to_del.append(codon)
+                    for codon in to_del:
+                        del deleted_codon[codon]
 
-                    deletion_frame[pileupcol.pos].append(
-                        {  # +1
-                            "ref": ref_sub_seq,
-                            "shift": shift,
-                            "amino_pos": amino_pos,
-                            "r_shift": r_shift,
-                            "ref_count": ref_count,
-                            "alt_count": Counter(deleted_codon),
-                            "strand": "+" if gff_row["strand"] == "+" else "-",
-                        }
-                    )
+                    deletion_frame[pileupcol.pos].append({  # +1
+                        "ref":
+                        ref_sub_seq,
+                        "shift":
+                        shift,
+                        "amino_pos":
+                        amino_pos,
+                        "r_shift":
+                        r_shift,
+                        "ref_count":
+                        ref_count,
+                        "alt_count":
+                        deleted_codon,
+                        "strand":
+                        gff_row["strand"],
+                        "depth":
+                        depth
+                    })
                     break
 
             if row["indel"] > 0:
@@ -146,17 +166,24 @@ def indel_frames(indel_pos_type_size, bam, params):
                             inserted_codon[i] = Seq.Seq(
                                 codon).reverse_complement()
                         ref_sub_seq = Seq.Seq(ref_sub_seq).reverse_complement()
-
-                    insertion_frame[
-                        pileupcol.pos  # - shift
-                    ] = {  # Location is where codon start
-                        "ref": ref_sub_seq,
-                        "amino_pos": amino_pos,
-                        "ref_count": ref_count,
-                        "shift": shift,
-                        "r_shift": r_shift,
-                        "alt_count": Counter(inserted_codon),
-                    }
+                    inserted_codon = dict(Counter(inserted_codon))
+                    to_del = []
+                    for codon, val in inserted_codon.items():
+                        if val * 1. / depth < alt_codon_frac:
+                            to_del.append(codon)
+                    for codon in to_del:
+                        del inserted_codon[codon]
+                    insertion_frame[pileupcol.pos  # - shift
+                                    ] = {  # Location is where codon start
+                                        "ref": ref_sub_seq,
+                                        "amino_pos": amino_pos,
+                                        "ref_count": ref_count,
+                                        "shift": shift,
+                                        "r_shift": r_shift,
+                                        "alt_count": inserted_codon,
+                                        "strand": gff_row["strand"],
+                                        "depth": depth
+                                    }
                     break
     delete_final_table = {
         "Amino Acid Change": [],
@@ -170,6 +197,8 @@ def indel_frames(indel_pos_type_size, bam, params):
         "ref_codon_count": [],
         "total_codon_count": [],
     }
+    print(deletion_frame)
+    print(insertion_frame)
     for coor in deletion_frame:
         codon_count = 0
         for x in deletion_frame[coor]:
