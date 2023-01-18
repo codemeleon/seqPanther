@@ -197,8 +197,6 @@ def indel_frames(indel_pos_type_size, bam, params):
         "ref_codon_count": [],
         "total_codon_count": [],
     }
-    print(deletion_frame)
-    print(insertion_frame)
     for coor in deletion_frame:
         codon_count = 0
         for x in deletion_frame[coor]:
