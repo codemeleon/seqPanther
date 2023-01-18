@@ -8,16 +8,8 @@ def check_sort_and_index_bam(bam_file, tmp_dir):
     """
     Checks file is sorted or not. If not, sorts and indexes.
     """
-    stats = pysam.stats(bam_file).splitlines()
-    is_sorted = False
-    for line in stats:
-        if line.startswith("SN"):
-            line_split = line.split("\t")
-            if line_split[1] == "is sorted":
-                if line_split[2] == "1":
-                    is_sorted = True
-                break
-    if is_sorted:
+    header = pysam.AlignmentFile(bam_file, 'rb').header.as_dict()
+    if header['HD']['SO'] == 'coordinate':
         if not path.exists(bam_file + ".bai"):
             pysam.index(bam_file)
         return bam_file
