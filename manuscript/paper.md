@@ -87,14 +87,14 @@ Table 4: Types of changes resulting in amino acid alterations. In case of indels
 \centering
 \begin{tabular*}{\textwidth}{|l|l|l|l|l|l|}
 \hline
-Event \# & Reference & Alternative & Event & Amino Acid Change & Additional Notes \\ \hline
-1 & ACT & ATT & Substitution & T-to-I & ~ \\ \hline
-2 & ACTCCA & ACTTCACCA & Insertion between codon & TP-to-TSP & Insertion of an amino acid \\ \hline
-3 & ACA & ACTTCA & Insertion within codon & T-to-TS & Substitution of one amino acid with two \\ \hline
-4 & ACT & ACGT & Insertion resulting frame-shift & Depends on downstream nucleotides & Alters all the amino acid downstream \\ \hline
-5 & ACTTCACCA & ACTCCA & Deletion of codon & TSP-to-TP & Deletion of one amino acid \\ \hline
-6 & ACTTCA & ACA & Deletion of triple in two codons & TS-to-T & Substitution of two amino acids with one \\ \hline
-7 & ACT & AT & Deletion resulting frame-shift & Depends on downstream nucleotides & Alters all the amino acid downstream \\ \hline
+\textbf{Event \#} & \textbf{Reference} & \textbf{Alternative} & \textbf{Event} & \textbf{Amino Acid Change} & \textbf{Additional Notes} \\ \hline
+1 & ACT & A\textcolor{red}{T}T & Substitution & T-to-I & ~ \\ \hline
+2 & ACTCCA & ACT\textcolor{red}{TCA}CCA & Insertion between codon & TP-to-TSP & Insertion of an amino acid \\ \hline
+3 & ACA & AC\textcolor{red}{TTC}A & Insertion within codon & T-to-TS & Substitution of one amino acid with two \\ \hline
+4 & ACT & AC\textcolor{red}{G}T & Insertion resulting frame-shift & Depends on downstream nucleotides & Alters all the amino acid downstream \\ \hline
+5 & ACT\textcolor{red}{TCA}CCA & ACTCCA & Deletion of codon & TSP-to-TP & Deletion of one amino acid \\ \hline
+6 & AC\textcolor{red}{TTC}A & ACA & Deletion of triple in two codons & TS-to-T & Substitution of two amino acids with one \\ \hline
+7 & A\textcolor{red}{C}T & AT & Deletion resulting frame-shift & Depends on downstream nucleotides & Alters all the amino acid downstream \\ \hline
 \end{tabular*}
 \end{table}
 
