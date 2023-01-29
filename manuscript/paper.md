@@ -139,11 +139,13 @@ The authors declare no competing interests.
 
 # References
 
+\bibliography{paper}
+
 # Supplementary material
 
-Supplementary table 1: Substitution in Sars-Cov-2 S-gene sequences
+**Supplementary table 1: Substitution in Sars-Cov-2 S-gene sequences**
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \begin{tabular}{|l|l|l|l|l|l|l|}
 \hline
@@ -165,9 +167,9 @@ K032282 & NC\_045512.2 & 24410 & G & 9122 & A:9111 & A:100 \\ \hline
 \end{tabular}
 \end{table}
 
-Supplementary table 2: Indels in Sars-Cov-2 S-gene sequences
+**Supplementary table 2: Indels in Sars-Cov-2 S-gene sequences**
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \begin{tabular}{|l|l|l|l|l|}
 \hline
@@ -176,9 +178,9 @@ K032282 & NC\_045512.2 & 22029 & "delAGTTCA:4029,read\_count:4210" & 95.70 \\ \h
 \end{tabular}
 \end{table}
 
-Supplementary table 3: Codon and amino-acid changes in Sars-Cov-2 S-gene sequences
+**Supplementary table 3: Codon and amino-acid changes in Sars-Cov-2 S-gene sequences**
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \begin{tabular}{|l|l|l|l|l|l|l|}
 \hline
