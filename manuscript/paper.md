@@ -130,3 +130,69 @@ Many microorganisms have fragmented genes (Introns separated exons), overlapped 
 The authors declare no competing interests.
 
 # References
+
+# Supplementary material
+
+Supplementary table 1: Substitution in Sars-Cov-2 S-gene sequences
+\begin{table}[htp]
+\centering
+\begin{tabular}{ c c c c c c c }
+\hline
+Sample & Reference ID & coor & Reference Nucleotide & read_count & Nucleotide Frequency & Nucleotide Percent \\
+\hline
+K032282 & NC_045512.2 & 21255 & G & 5080 & T:5061 & T:100 \\
+K032282 & NC_045512.2 & 21306 & C & 3865 & T:3823 & T:99 \\
+K032282 & NC_045512.2 & 21551 & A & 5613 & A:5304,T:301 & A:94,T:5 \\
+K032282 & NC_045512.2 & 21618 & C & 9740 & G:9724 & G:100 \\
+K032282 & NC_045512.2 & 21624 & G & 9973 & C:9955 & C:100 \\
+K032282 & NC_045512.2 & 21987 & G & 4102 & A:4089 & A:100 \\
+K032282 & NC_045512.2 & 22227 & C & 4103 & T:4076 & T:99 \\
+K032282 & NC_045512.2 & 22917 & T & 4505 & G:4500 & G:100 \\
+K032282 & NC_045512.2 & 22995 & C & 4386 & A:4381 & A:100 \\
+K032282 & NC_045512.2 & 23012 & G & 4610 & C:4603 & C:100 \\
+K032282 & NC_045512.2 & 23380 & C & 13827 & T:13792 & T:100 \\
+K032282 & NC_045512.2 & 23403 & A & 14143 & G:14118 & G:100 \\
+K032282 & NC_045512.2 & 23604 & C & 4165 & G:4157 & G:100 \\
+K032282 & NC_045512.2 & 24410 & G & 9122 & A:9111 & A:100 \\
+\hline
+\end{tabular}
+\end{table}
+
+Supplementary table 2: Indels in Sars-Cov-2 S-gene sequences
+
+\begin{table}[htp]
+\centering
+\begin{tabular}{ c c c c c }
+\hline
+Sample & Reference ID & coor & Nucleotide Frequency & Nucleotide Percent \\
+\hline
+K032282 & NC_045512.2 & 22029 & delAGTTCA:4029,read_count:4210 & 95.70 \\
+\hline
+\end{tabular}
+\end{table}
+
+Supplementary table 3: Codon and amino-acid changes in Sars-Cov-2 S-gene sequences
+
+\begin{table}[htp]
+\centering
+\begin{tabular}{ c c c c c c c }
+\hline
+Sample & Reference ID & Amino Acid Change & Nucleotide Change & Codon Change & codon_count & codon_percent \\
+\hline
+K032282 & NC_045512.2 & EFR155G & 22029:AGTTCA> & 22028:GAGTTCAGA>GGA & GAGTTCAGA-0;GGA-4015 & GAGTTCAGA-0.00;GGA-100.00 \\
+K032282 & NC_045512.2 & A2596A & 21255:G>T & 21253:GCG>GCT & GCG-11;GCT-4996 & GCG-0.22;GCT-99.68 \\
+K032282 & NC_045512.2 & R2613R & 21306:C>T & 21304:CGC>CGT & CGC-21;CGT-3807 & CGC-0.55;CGT-99.69 \\
+K032282 & NC_045512.2 & T19R & 21618:C>G & 21617:ACA>AGA & ACA-2;AGA-9675 & ACA-0.02;AGA-99.57 \\
+K032282 & NC_045512.2 & R21T & 21624:G>C & 21623:AGA>ACA & AGA-2;ACA-9792 & AGA-0.02;ACA-99.45 \\
+K032282 & NC_045512.2 & G142D & 21987:G>A & 21986:GGT>GAT & GGT-0;GAT-4066 & GGT-0.00;GAT-99.83 \\
+K032282 & NC_045512.2 & A222V & 22227:C>T & 22226:GCT>GTT & GCT-5;GTT-4029 & GCT-0.12;GTT-99.85 \\
+K032282 & NC_045512.2 & L452R & 22917:T>G & 22916:CTG>CGG & CTG-3;CGG-4355 & CTG-0.07;CGG-99.50 \\
+K032282 & NC_045512.2 & T478K & 22995:C>A & 22994:ACA>AAA & ACA-2;AAA-4344 & ACA-0.05;AAA-99.45 \\
+K032282 & NC_045512.2 & E484Q & 23012:G>C & 23012:GAA>CAA & GAA-0;CAA-4573 & GAA-0.00;CAA-99.61 \\
+K032282 & NC_045512.2 & N606N & 23380:C>T & 23378:AAC>AAT & AAC-12;AAT-13553 & AAC-0.09;AAT-99.65 \\
+K032282 & NC_045512.2 & D614G & 23403:A>G & 23402:GAT>GGT & GAT-7;GGT-13653 & GAT-0.05;GGT-98.71 \\
+K032282 & NC_045512.2 & P681R & 23604:C>G & 23603:CCT>CGT & CCT-0;CGT-3922 & CCT-0.00;CGT-99.47 \\
+K032282 & NC_045512.2 & D950N & 24410:G>A & 24410:GAT>AAT & GAT-2;AAT-9032 & GAT-0.02;AAT-99.67 \\
+\hline
+\end{tabular}
+\end{table}
