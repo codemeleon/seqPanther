@@ -146,7 +146,7 @@ The authors declare no competing interests.
 
 \begin{table}[H]
 \centering
-\begin{tabularx}{|X|X|X|X|X|X|X|}
+\begin{tabularx}{\textwidth}{|X|X|X|X|X|X|X|}
 \hline
 \textbf{Sample} & \textbf{Reference ID} & \textbf{coor} & \textbf{Reference Nucleotide} & \textbf{read\_count} & \textbf{Nucleotide Frequency} & \textbf{Nucleotide Percent} \\ \hline
 K032282 & NC\_045512.2 & 21255 & G & 5080 & T:5061 & T:100 \\ \hline
