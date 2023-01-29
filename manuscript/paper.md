@@ -135,6 +135,7 @@ The authors declare no competing interests.
 
 Supplementary table 1: Substitution in Sars-Cov-2 S-gene sequences
 
+$$
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|l|l|l|l|l|l|l|}
@@ -156,9 +157,11 @@ K032282 & NC_045512.2 & 23604 & C & 4165 & G:4157 & G:100 \\ \hline
 K032282 & NC_045512.2 & 24410 & G & 9122 & A:9111 & A:100 \\ \hline
 \end{tabular}
 \end{table}
+$$
 
 Supplementary table 2: Indels in Sars-Cov-2 S-gene sequences
 
+$$
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|l|l|l|l|l|}
@@ -167,9 +170,11 @@ Supplementary table 2: Indels in Sars-Cov-2 S-gene sequences
 K032282 & NC_045512.2 & 22029 & "delAGTTCA:4029,read_count:4210" & 95.70 \\ \hline
 \end{tabular}
 \end{table}
+$$
 
 Supplementary table 3: Codon and amino-acid changes in Sars-Cov-2 S-gene sequences
 
+$$
 \begin{table}[!ht]
 \centering
 \begin{tabular}{|l|l|l|l|l|l|l|}
@@ -191,3 +196,4 @@ K032282 & NC_045512.2 & P681R & 23604:C>G & 23603:CCT>CGT & CCT-0;CGT-3922 & CCT
 K032282 & NC_045512.2 & D950N & 24410:G>A & 24410:GAT>AAT & GAT-2;AAT-9032 & GAT-0.02;AAT-99.67 \\ \hline
 \end{tabular}
 \end{table}
+$$
