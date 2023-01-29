@@ -45,7 +45,7 @@ affiliations:
 date: 23 January 2023
 output: 
   pdf_document:
-    extra_dependencies: ["float"]
+    extra_dependencies: ["float", "tabularx"]
 bibliography: paper.bib
 ---
 
@@ -139,7 +139,6 @@ The authors declare no competing interests.
 
 # References
 
-\bibliography{paper}
 
 # Supplementary material
 
@@ -147,7 +146,7 @@ The authors declare no competing interests.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{|l|l|l|l|l|l|l|}
+\begin{tabularx}{|X|X|X|X|X|X|X|}
 \hline
 \textbf{Sample} & \textbf{Reference ID} & \textbf{coor} & \textbf{Reference Nucleotide} & \textbf{read\_count} & \textbf{Nucleotide Frequency} & \textbf{Nucleotide Percent} \\ \hline
 K032282 & NC\_045512.2 & 21255 & G & 5080 & T:5061 & T:100 \\ \hline
@@ -164,7 +163,7 @@ K032282 & NC\_045512.2 & 23380 & C & 13827 & T:13792 & T:100 \\ \hline
 K032282 & NC\_045512.2 & 23403 & A & 14143 & G:14118 & G:100 \\ \hline
 K032282 & NC\_045512.2 & 23604 & C & 4165 & G:4157 & G:100 \\ \hline
 K032282 & NC\_045512.2 & 24410 & G & 9122 & A:9111 & A:100 \\ \hline
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 **Supplementary table 2: Indels in Sars-Cov-2 S-gene sequences**
