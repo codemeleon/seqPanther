@@ -43,6 +43,9 @@ affiliations:
   - name: University College Cork, Ireland
     index: 4
 date: 23 January 2023
+output: 
+  pdf_document:
+    extra_dependencies: ["float"]
 bibliography: paper.bib
 ---
 
@@ -88,7 +91,7 @@ Table 4: Types of changes resulting in amino acid alterations. In the case of in
 
 
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \fontsize{8}{10}
 \begin{tabular}{|p{0.05\linewidth}|p{0.08\linewidth}|p{0.08\linewidth}|p{0.20\linewidth}|p{0.20\linewidth}|p{0.25\linewidth}|}
