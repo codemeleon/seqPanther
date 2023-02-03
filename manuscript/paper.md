@@ -12,27 +12,27 @@ authors:
   - name: James Emmanuel San
     orcid: 0000-0002-5736-664X
     affiliation: 1,2
-  - name: Stephanie Van Wy
-    orcid: 0000-0003-0306-8193
+  - name: Stephanie Van Wyk
+    orcid: 0000-0002-2655-8518
     affiliation: 2
   - name: Houriiyah Tegally
     orcid: 0000-0002-7102-8540
     affiliation: 1,2
   - name: Simeon Eche
-    orcid: 0000-0001-7464-1626
+    orcid: 0000-0001-5494-8372
     affiliation: 3
   - name: Eduan Wilkinson
     orcid: 0000-0002-2503-9441
     affiliation: 1,2
   - name: Aquillah M. Kanzi
     orcid: 0000-0001-6081-9438
-    affiliation: 1,2
+    affiliation: 1
   - name: de Oliveira Tulio
     orcid: 0000-0002-3027-5254
-    affiliation: 1,2
+    affiliation: 1,2,4
   - name: Anmol M. Kiran
     orcid: 0000-0003-2680-2303
-    affiliation: 4
+    affiliation: 5
 affiliations:
   - name: KwaZulu Natal Research and Innovation Sequencing Platform, KRISP, University of KwaZulu Natal, Durban, South Africa
     index: 1
@@ -40,8 +40,10 @@ affiliations:
     index: 2
   - name: Yale University School of Medicine, New Haven, Connecticut, USA
     index: 3
-  - name: University College Cork, Ireland
+  - name: Department of Global Health, University of Washington, Seattle, WA, USA
     index: 4
+  - name: University College Cork, Ireland
+    index: 5
 date: 23 January 2023
 output: 
   pdf_document:
@@ -137,9 +139,6 @@ Many microorganisms have fragmented genes (Introns separated exons), overlapped 
 
 The authors declare no competing interests.
 
-# References
-
-
 # Supplementary material
 
 **Supplementary table 1: Substitution in Sars-Cov-2 S-gene sequences**
@@ -200,3 +199,5 @@ K032282 & NC\_045512.2 & P681R & 23604:C>G & 23603:CCT>CGT & CCT-0;CGT-3922 & CC
 K032282 & NC\_045512.2 & D950N & 24410:G>A & 24410:GAT>AAT & GAT-2;AAT-9032 & GAT-0.02;AAT-99.67 \\ \hline
 \end{tabular}
 \end{table}
+
+# References
