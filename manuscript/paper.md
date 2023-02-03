@@ -135,9 +135,13 @@ Genomic epidemiology and associated public health interventions entirely depend 
 
 Many microorganisms have fragmented genes (Introns separated exons), overlapped genes or genes with frameshift events such as Influenza A with a segmented genome, however, at present the tool only supports single-segment genomes without other stated events. We plan to extend it to support complex gene and genome structures. We wish to report indels whose length is not a multiple of 3 and yet they are present in the same read and summation leads to a multiple of three. Furthermore, as the cost of sequencing continues to reduce and the capacity to sequence increases, we expect to see a further influx in the number of microbial genomes. To this effect, we intend to implement performance enhancements to reduce the batch analyses running time given a fairly large number of genomes.
 
+# Acknowledgements
+
 # Conflict of interest
 
 The authors declare no competing interests.
+
+# Funding sources
 
 # Supplementary material
 
