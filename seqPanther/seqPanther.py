@@ -14,7 +14,7 @@ __version__ = "0.0.1"
 @click.group(context_settings={'help_option_names': ["-h", "--help"]},
              no_args_is_help=True)
 def run():
-    """A toolset for sequence exploration and manipulation."""
+    """A toolset for sequence and read mapping exploration and manipulation."""
     pass
 
 
