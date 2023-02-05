@@ -8,8 +8,6 @@ from os import path, makedirs
 def alt_nuc(info_dict):
     refnuc = info_dict["Reference Nucleotide"]
     to_keep = []
-    print(info_dict["Nucleotide Percent"],
-          pd.isna(info_dict["Nucleotide Percent"]), 'Anmol')
     for alt_nuc_pt in info_dict["Nucleotide Percent"].split(","):
         if alt_nuc_pt.split(":")[0] != refnuc:
             to_keep.append(refnuc + ":" + alt_nuc_pt)

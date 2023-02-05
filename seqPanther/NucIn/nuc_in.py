@@ -102,7 +102,6 @@ def run(ref, rid, tabd, outd, consensus, merge):
             if not ref_fasta:
                 exit(f"Given reference '{rid}' is not in fasta file '{ref}'")
 
-            pass
     else:
         exit("Reference file path not given.")
     sample_seq = {}
