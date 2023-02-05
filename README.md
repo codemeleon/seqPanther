@@ -30,20 +30,20 @@ The tool relies on multiple external programs and python modules as listed below
    - For parsing variant calling and generating consensus sequences.
    - `conda install bcftools` to install.
 
-3. Muscle
+3. Muscle (v. 3.8.31)
 
-   - To perform multiple sequence alignment
-   - `conda install muscle` to install
+   - To perform multiple sequence alignment.
+   - `conda install muscle=3.8.31` to install.
 
 4. BLAT
 
    - To query sequence location in the genome.
-   - `conda install blat` to install
+   - `conda install blat` to install.
 
 5. MAFFT
 
    - To align consensus sequence against the reference.
-   - `conda install mafft` to install
+   - `conda install mafft` to install.
 
 # Installation
 
@@ -84,7 +84,8 @@ This command help is accessible at `seqPanther SeqPatcher` or `SeqPatcher --help
 6. Outputs can be explored using a text file reader and pdf reader.
 7. To convert changes in integrable in format `seqpanther cc2ns -s sub_output.csv -i indel_output.csv -o changes`. It generates a CSV file for each sample in `./change` folder. The user needs to explore those files and remove the changes they would like not to be integrated.
 8. Finally, `seqpanther nucsubs -i NC_045512.2 -r NC_045512.2.fasta -c consensus -t changes -o results` need to be executed to integrate relevant changes to the consensus sequences. The output will be stored in `results` folder.
-<!--9. For the `seqpacher` example, user need to download sequence from [san_f](san_F) and [sang_r](sang_r) and [con](conpath), and `command` to be executed to generate final sonses. For more detail please see [paper](paperpath).-->
+9. Example data for `seqpanther seqpatcher` is provded in example folder of this project.
+10. To run `seqpanther seqpatcher` on the example data, use `seqpanther seqpatcher -s examples/seqpatcher/ab1 -a examples/seqpatcher/assemblies -o Results -t mmf.csv -O sanger.fasta -g 10 -3 True -x del`. It will generate Sanger sequences integrated consensus files in Result folder, a mmf.csv file reporting that sanger data were paired or single ab1, or in single fasta, and sanger.fasta containing all sanger sequences.
 
 # Features
 
