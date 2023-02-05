@@ -203,7 +203,6 @@ def ranges(lst, given_gap=0):
     A generator returns list of range based on given numbers
     [1,2,3,4,5, 10, 11, 12, 13, 14] => [[1,5], [10,14]]
     """
-    # print(given_gap, "Anmol")
     lst_sorted = sorted(lst)
     init = 0
     for num in range(1, len(lst_sorted)):
@@ -222,7 +221,6 @@ def useful_range(lst, gap=10):  # TODO: Add in command
     # or they want other fragment to be selected
 
     trange = list(ranges(lst, gap))
-    # print(trange, "kiran")
     pre_frag_len = 0
     myrange = trange[0]
     for rng in trange:
@@ -449,8 +447,6 @@ def merge_base_peak(nuc_df, peak_dict):
 
     nuc_df["idx"] = list(nuc_df.index)
 
-    # df = enumerate_columns(df)
-    # print(df)
     to_drop = ["idx"]
     for nuc in peak_dict:
         # Expecting sequence will not change while aligning, except insertion of gaps
@@ -506,8 +502,6 @@ def rep_paired_base(lst, ambiguous=False):
                         base = bs
                 return base
         else:
-            # if ambiguous:
-            # print(lst["F_peak"], lst["R_peak"], "Kkiran", lst)
             amb_base = tuple(list(set(lst["F_peak"]) & set(lst["R_peak"])))
             if not amb_base:
                 amb_base = tuple(list(set(lst["F_peak"]) | set(lst["R_peak"])))
@@ -582,8 +576,6 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
                         else:
                             aln_df.loc[ltc:, rev[dir]] = "-"
 
-        # print(aln_df.loc[u_range_r[-1] + 1 : u_range_r[-1] + 30, "R"])
-        # print(u_range_f, u_range_r, "dead zone")
         u_range = [
             np.min([u_range_f[0], u_range_r[0]]),
             np.max([u_range_f[-1], u_range_r[-1]]),
@@ -591,9 +583,6 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         aln_df.loc[:u_range[0] - 1, ["F", "R"]] = "-"
         aln_df.loc[u_range[1] + 1:, ["F", "R"]] = "-"
         sang_type = "P"  # For paired
-        # print(aln_df.head())
-        # TODO: Must check in case of mismatch and ambigious it remove it carefully
-        # print(idx)
     else:
         if "F" in aln_df:
             idx = aln_df[aln_df["F"] != "-"].index
@@ -616,21 +605,16 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         ambi_indexes = aln_df[aln_df[col].isin(list("NRYKMSWBDHV"))].index
         ambi_indexes = ambi_indexes[(ambi_indexes >= u_range[0])
                                     & (ambi_indexes <= u_range[-1])]
-        # print(u_range, ambi_indexes, "anmol", u_range)
 
         if len(ambi_indexes):
-            print(ambi_indexes)
             ambi_index_left = ambi_indexes[ambi_indexes < u_range[0] + 20]
             ambi_index_right = ambi_indexes[ambi_indexes > u_range[-1] - 20]
             if ambi_index_left.any():
                 u_range[0] = ambi_index_left.max()
             if ambi_index_right.any():
                 u_range[-1] = ambi_index_right.min()
-            # print(u_range, "testing")
-            # exit()
             aln_df.loc[:u_range[0] - 1, col] = "-"
             aln_df.loc[u_range[1] + 1:, col] = "-"
-    # print(aln_df.loc[u_range_r[-1]: u_range_r[-1] + 30, "R"])
     # TODO: Avoid gap
 
     # # TODO: Perform average base call for gaps
@@ -701,12 +685,6 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         mistmatched_indexes = mistmatched_indexes[
             (mistmatched_indexes >= f_end) & (mistmatched_indexes <= r_end)]
         for mismatched_index in mistmatched_indexes:
-            # print(
-            # "test",
-            # mistmatched_indexes,
-            # aln_df.loc[mismatched_index, "F"],
-            # aln_df.loc[mismatched_index, "R"],
-            # )
 
             if (aln_df.loc[mismatched_index, "F"] == "-"
                     or aln_df.loc[mismatched_index, "R"] == "-"):
@@ -748,13 +726,6 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
             elif (aln_df.loc[mismatched_index + 1, "R"] == "-"
                   and aln_df.loc[mismatched_index + 1,
                                  "F"] == aln_df.loc[mismatched_index, "R"]):
-                # print(
-                # mismatched_index,
-                # aln_df.loc[mismatched_index + 1, "R"],
-                # aln_df.loc[mismatched_index + 1, "F"],
-                # aln_df.loc[mismatched_index, "R"],
-                # "TEsting",
-                # )
                 aln_df.loc[mismatched_index, "R"] = "-"
                 aln_df.loc[mismatched_index + 1,
                            "R"] = aln_df.loc[mismatched_index + 1, "F"]
@@ -768,8 +739,6 @@ def aln_clean(aln_df, gap=15, ambiguous=False):  # , at, res_fold):
         mistmatched_indexes = mistmatched_indexes[
             (mistmatched_indexes >= f_end) & (mistmatched_indexes <= r_end)]
 
-        # Corrections around single nucleotide indels
-        # print(f_range, "abd", r_range, f_end, r_end, "KK")
         for mismatched_index in mistmatched_indexes:
             for rv in rev:
 
@@ -874,16 +843,12 @@ def fasta_map2ref(infile, gap, tmp_fold, n3, idb):
             sequences[rec.id] = rec.seq.reverse_complement()
         else:
             sequences[rec.id] = rec.seq
-    cds = True  # TODO: get this information from reference sequence file
     for rec in SeqIO.parse(f"{tmp_fold}/ref.fasta", "fasta"):
         sequences["ref"] = rec.seq
-        # if rec.description.split()[1] == "CDS":
-        # cds = True
 
     flb = path.split(infile)[1].split(".")[0]
 
     aln_df = aln_df_with_ref(sequences, flb, tmp_fold)
-    # print(aln_df)
     mapped_index = aln_df[aln_df[flb] != "-"].index
     u_range = useful_range(mapped_index, gap)
     aln_df["concensus"] = "-"
@@ -900,18 +865,10 @@ def fasta_map2ref(infile, gap, tmp_fold, n3, idb):
                 rng for rng in del_ranges
                 if (rng[0] > u_range[0] & rng[1] < u_range[1])
             ]
-            # Del codon is accepted when codon deletion is allowed else deletions are filled with gaps
             for rng in del_ranges:
                 if n3:
                     if (rng[1] - rng[0] + 1) % 3 != 0:
                         aln_df.loc[rng[0]:rng[1], "concensus"] = "N"
-                        # aln_df.loc[
-                        # rng[0]: rng[1], "ref"
-                        # ]
-                # else: # TODO: Talk to SAN, does he want insert ref, of Ns or leave as gaps
-                # aln_df.loc[rng[0]: rng[1], "concensus"] = aln_df.loc[
-                # rng[0]: rng[1], "ref"
-                # ]
 
     if idb in ["ins", "both"]:
         ins_sites = aln_df[aln_df["ref"] == "-"].index.values
@@ -928,10 +885,6 @@ def fasta_map2ref(infile, gap, tmp_fold, n3, idb):
                             rng[0]:rng[1],
                             "concensus"] = aln_df.loc[  # TODO: ask san whether he wants to insert Ns or leave reported nucletides
                                 rng[0]:rng[1], "ref"]
-                # else:
-                # aln_df.loc[rng[0]: rng[1], "concensus"] = aln_df.loc[
-                # rng[0]: rng[1], "ref"
-                # ]
 
     seq = "".join(aln_df["concensus"])  # .replace("-", "N")
     outfile = f"{tmp_fold}/sanger_converted_fasta/{flb}.fasta"
@@ -966,12 +919,7 @@ def ab1_2seq_map2ref(infiles, gap, tmp_fold):  # , amb, at, res_fold):
 
     aln_with_peak = merge_base_peak(aln_df_with_ref(tsequences, flb, tmp_fold),
                                     ab1seq_dfs)
-    # exit()
-    # add file names as well, amb, at, res_fold)
     aln_with_peak, u_range = aln_clean(aln_with_peak, gap)
-    # aln_with_peak.to_csv(f"{flb}.csv")
-    # aln_with_peak.to_csv("testxx.csv")
-    # exit(0)
     seq = "".join(list(aln_with_peak["consensus"].values))
     # TODO: Generate sequence and exit
     outfile = path.split(infiles[0])[1].split(".")[0]
@@ -983,16 +931,14 @@ def ab1_2seq_map2ref(infiles, gap, tmp_fold):  # , amb, at, res_fold):
 
 
 def ab2fasta(
-    sang_dict,
-    tmp_fold,
-    gap,
-    key,
-    n3,
-    idb  # , bc="neigh"
-):  # Base criteria, max, neighbors, mixed # Inputfiles paired and none paired
-    # sanger_outputs, tmp_fold, gap
+        sang_dict,
+        tmp_fold,
+        gap,
+        key,
+        n3,
+        idb  # , bc="neigh"
+):
     """Retains fasta and converts ab1 to fasta"""
-    # print(key, sang_dict)
     infiles = sang_dict[key]
 
     if len(infiles) == 1 and infiles[0].endswith(".fasta"):
@@ -1156,17 +1102,11 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
                 my_start = tstarts[ps] + start - qstarts[ps]
             if end >= qstarts[ps] and end <= qends[ps]:
                 my_end = tstarts[ps] + end - qstarts[ps]
-        # tseq = org_seq[row[13]][my_start:my_end]
-        # range_gen = re.finditer("N+", tseq)
-        # n_range = [match.span() for match in range_gen]
-        # print(my_start, my_end, start, end, n_range, "anmol")
 
         org_seq[row[13]] = (org_seq[row[13]][:my_start] +
                             sanger_seq[row[9]][start:end] +
                             org_seq[row[13]][my_end:])
 
-        # print("Please report at a bug at")
-        # print("https://github.com/krisp-kwazulu-natal/" "seqPatcher/issues")
     with open(f"{outputfold}/{sample_id}.fasta", "w") as fout:
         for k in org_seq:
             fout.write(f">{k}\n{org_seq[k]}\n")
@@ -1184,10 +1124,6 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
     default="ab1",
     show_default=True,
 )  # Convert this to folder
-# "/home/devil/Documents/San/Corona/Merging/Sanger/12April2021"
-# @click.option("-fa", help="Fasta output file.
-# If not given, only sequences will be printed in terminal",
-#               type=str, default=None, show_default=True)
 @click.option(
     "-a",
     "-assemblies-foder",
@@ -1294,16 +1230,16 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
     show_default=True,
     multiple=False,
 )
-@click.option(
-    "-m",
-    "--allow-ambi-nuc",
-    "amb",
-    help=
-    "Allow ambigious nucleotide integration, if present in both forward and reverse sequences. Else nucleotide will be calculated.",
-    type=bool,
-    default=False,
-    show_default=True,
-)
+# @click.option(
+# "-m",
+# "--allow-ambi-nuc",
+# "amb",
+# help=
+# "Allow ambigious nucleotide integration, if present in both forward and reverse sequences. Else nucleotide will be calculated.",
+# type=bool,
+# default=False,
+# show_default=True,
+# )
 # @click.option(
 # "-M",
 # "--ambigious-base-table",
@@ -1317,36 +1253,22 @@ def integrate_in_assembly(outputfold, tmp_fold, sample_id):
 # TODO: Suggest option to integrate ambigious nucleotide
 @click.version_option(__version__)
 def run(
-        sa_ab1,
-        asf,
-        outd,
-        tab,
-        ss,
-        rf,
-        ci,
-        gap,
-        n3,
-        idb,
-        amb  # , at
-):  # , fa, asb, al, bscpu,
-    # print(sa_ab1, asf, outd, tab, ss, rf, cpu, ci, gap, n3, idb)
+    sa_ab1,
+    asf,
+    outd,
+    tab,
+    ss,
+    rf,
+    ci,
+    gap,
+    n3,
+    idb,
+    # amb  # , at
+):
     """
     Reports nucleotide sequence from Sanger chromatogram data based on user
     provided parameters and integrate that in assembly generated using NGS
     data"""
-    # TODO: Integrate multi core system
-    # if cpu < 1:
-    # print("Number of CPU use given is < 1.")
-    # print("Using default CPU value of 1")
-    # cpu = 1
-    # elif cpu > cpu_count() - 1:
-    # print("Given cpu usage is more or equal to cpus avalable on system")
-    # print(f"Setting CPU usage to {cpu_count() - 1 }")
-    # cpu = cpu_count() - 1
-    # else:
-    # pass
-
-    # pool = Pool(cpu)
 
     if not sa_ab1:
         exit("Sanger data folder is not given. Exiting . . . .")
@@ -1372,7 +1294,6 @@ def run(
         print("Considering sars-cov-2 spike protein sequence as reference")
         rf = None
 
-    # tmp_fold = "tmp"
     tmp_fold = tmf.mkdtemp()
 
     # ----------Housekeeping----------------
@@ -1436,10 +1357,8 @@ def run(
             flb = path.split(fl)[1].split(".")[0]
             if flb not in sanger_names:
                 sanger_names.append(flb)
-    # print(sanger_names)
-    # exit()
 
-    ss = "Anmol.fasta"
+    # ss = f"{tmp_fold}/sanger.fasta"
     for fl in glob(f"{sa_ab1}/*"):
         if fl.endswith(
                 ".fasta"):  # TODO: Allow fa, faa, fna, and other fasta formats
@@ -1462,11 +1381,8 @@ def run(
             l_r = orient(fl, ref_path, f"{tmp_fold}/tmp")
             copyfile(fl, f"{tmp_fold}/sanger_raw/{flb}.{l_r}.ab1")
     sanger_outputs = files_and_groups(glob(f"{tmp_fold}/sanger_raw/*"))
-    # print(sanger_outputs)
     for k in sanger_outputs:
-        # print(k)
         ab2fasta(sanger_outputs, tmp_fold, gap, k, n3, idb)
-        # exit()
 
     if ss:  # WARNING: Does it matter? If this doesn't work while code be not functional
         with open(ss, "w") as fout:
@@ -1486,8 +1402,6 @@ def run(
     for fl in assembly_files:
         for rec in SeqIO.parse(fl, "fasta"):
             assembly_names.append(rec.id)
-    # else:
-    # exit(f"No file is assembly folder {asf}. Exiting . . . .")
     if not assembly_names:
         # TODO: Should run even assemblies are not give and produce fasta from sanger seq
         if ci:
@@ -1519,8 +1433,6 @@ def run(
 
     if tab:
         seq_id_df.to_csv(tab, index=False)
-    else:
-        print(seq_id_df.to_csv(index=False))
 
     seq_id_df = seq_id_df[(((seq_id_df["ab1_Forward"] == 1) |
                             (seq_id_df["ab1_Reverse"] == 1))
