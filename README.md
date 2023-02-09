@@ -63,7 +63,7 @@ seqPanther contains four commands, which can be accessed using `seqPanther --hel
 
 ## CodonCounter
 
-This command help is accessible using `seqPanther CodonCounter` or `seqPanther CodonCounter --help`.
+This command help is accessible using `seqPanther CodonCounter` or `seqPanther codoncounter --help`.
 
 ## SeqIn
 
