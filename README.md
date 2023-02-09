@@ -59,19 +59,19 @@ The tool relies on multiple external programs and python modules as listed below
 
 # Usages
 
-seqPanther contains four commands, which can be accessed using `seqPanther --help` or just `seqPanther`:
+seqPanther contains four commands, which can be accessed using `seqpanther --help` or just `seqpanther`:
 
 ## CodonCounter
 
-This command help is accessible using `seqPanther CodonCounter` or `seqPanther codoncounter --help`.
+This command help is accessible using `seqpanther codoncounter` or `seqpanther codoncounter --help`.
 
 ## SeqIn
 
-This command help is accessible using `seqPanther SeqIn` or `seqPanther SeqIn --help`.
+This command help is accessible using `seqpanther nucsub` or `seqpanther nucsub --help`.
 
 ## SeqPatcher
 
-This command help is accessible at `seqPanther SeqPatcher` or `SeqPatcher --help`.
+This command help is accessible at `seqpanther seqpatcher` or `seqpanther seqpatcher --help`.
 
 # Example
 
@@ -89,7 +89,7 @@ This command help is accessible at `seqPanther SeqPatcher` or `SeqPatcher --help
 
 # Features
 
-Codon Counter and SeqIn commands were specifically defined for this program. However, each sub-command can be installed and used independently of this program.
+`codoncounter` and `nucsub` commands were specifically defined for this program. However, each sub-command can be installed and used independently of this program.
 
 # Warning
 
