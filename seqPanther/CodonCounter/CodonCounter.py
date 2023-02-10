@@ -82,7 +82,7 @@ def str2coors(coorstr):
     # default="21000-25000", #  Forward sub
     # default="4900-9000", # Reverse sub
     # default="22279-22300",  # For Deletion position
-    default="22190-22206",  # Forward insert
+    default=None,  # Forward insert
     show_default=True,
 )
 @click.option(
@@ -253,6 +253,8 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         bam_files[i] = bammer.check_sort_and_index_bam(bam, tmp_dir=tmp_dir)
 
     # NOTE: genomic range
+    if not coor_range:
+        coor_range = f"1-{len(ref_seq)}"
     coor_range = str2coors(coor_range)
 
     pool = auto_cpu.cpus(cpu)  # CPU Selection
