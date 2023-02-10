@@ -13,7 +13,7 @@ import pandas as pd
 from Bio import SeqIO
 import pyfaidx
 import matplotlib.backends.backend_pdf as bpdf
-from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale
+from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale, xlim
 
 from . import auto_cpu, bammer, coors_with_changes, gff_reader
 
@@ -137,6 +137,13 @@ def str2coors(coorstr):
     show_default=True,
 )
 @click.option(
+    "--max_seq_depth",
+    help="Maximum sequencing depth at position to be considred",
+    type=int,
+    default=1000000,
+    show_default=True,
+)
+@click.option(
     "--alt_nuc_count",
     help="Minimum alternate nucleotide/indel read count fraction",
     type=click.FloatRange(0.003, 0.97),
@@ -189,7 +196,7 @@ def str2coors(coorstr):
 def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         min_mapping_quality, min_base_quality, ignore_overlaps, min_seq_depth,
         alt_nuc_count, cpu, endlen, codoncountfile, subcountfile,
-        indelcountfile):
+        indelcountfile, max_seq_depth):
     """Expected to that bam file is sorted based on coordinate and indexed."""
     try:
         tp = path.split(codoncountfile.name)[0]
@@ -268,6 +275,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         # TODO: Shift the bottom part and merge in single table
 
         params = {
+            'ref': ref,
             "rid": rid,
             "start": start,
             "end": end,
@@ -277,6 +285,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
             "ignore_orphans": ignore_orphans,
             "min_mapping_quality": min_mapping_quality,
             "min_seq_depth": min_seq_depth,
+            'max_seq_depth': max_seq_depth,
             "min_base_quality": min_base_quality,
             "ignore_overlaps": ignore_overlaps,
             "alt_nuc_count": alt_nuc_count,
@@ -338,6 +347,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
                             alpha=0.4,
                             s=10)
                 title(key)
+                xlim(value.coor.min() - 10, value.coor.max() + 10)
                 xlabel("Position in the reference")
                 ylabel("Read coverage")
                 legend()
