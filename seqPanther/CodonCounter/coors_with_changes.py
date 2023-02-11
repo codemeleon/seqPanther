@@ -41,7 +41,7 @@ def changed_coordinates(params, bam):
     command = f"bcftools mpileup --annotate FORMAT/AD -d {max_seq_depth} -L {max_seq_depth} -m 1 -e 40 --open-prob 40 -B -q {min_mapping_quality} -C0 -Q {min_base_quality} -r {rid}:{start}-{end} --no-BAQ -f {ref} -o {vcf_file} {bam}"
     if ignore_overlaps:
         command += ' -x'
-    if ignore_orphans:
+    if not ignore_orphans:
         command += ' -A'
 
     command += " 2>/dev/null"
@@ -65,7 +65,6 @@ def changed_coordinates(params, bam):
     vcf[9] = vcf[9].apply(lambda x: x[1:])
 
     vcf = vcf[vcf[9].apply(lambda x: np.sum(x > alt_nuc_count)) > 0]
-    print(vcf.shape)
 
     coordinates_with_change = {}
     indel_pos_type_size = {"coor": [], "indel": [], "seq": []}

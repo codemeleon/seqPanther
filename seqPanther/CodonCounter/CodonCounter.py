@@ -13,7 +13,7 @@ import pandas as pd
 from Bio import SeqIO
 import pyfaidx
 import matplotlib.backends.backend_pdf as bpdf
-from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale, xlim
+from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale
 
 from . import auto_cpu, bammer, coors_with_changes, gff_reader
 
@@ -348,7 +348,6 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
                             alpha=0.4,
                             s=10)
                 title(key)
-                xlim(value.coor.min() - 10, value.coor.max() + 10)
                 xlabel("Position in the reference")
                 ylabel("Read coverage")
                 legend()
