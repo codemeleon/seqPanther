@@ -277,6 +277,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         params = {
             'ref': ref,
             "rid": rid,
+            'tmp_dir': tmp_dir,
             "start": start,
             "end": end,
             "gff_data": gff_data,
