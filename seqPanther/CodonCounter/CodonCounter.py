@@ -350,7 +350,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
                             s=10)
                 title(key)
                 xlabel("Position in the reference")
-                xlim(value.coor.min() - 10, value.coor.max() + 10)
+                # xlim(value.coor.min() - 10, value.coor.max() + 10)
                 ylabel("Read coverage")
                 legend()
 
