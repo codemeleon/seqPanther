@@ -82,7 +82,7 @@ def str2coors(coorstr):
     # default="21000-25000", #  Forward sub
     # default="4900-9000", # Reverse sub
     # default="22279-22300",  # For Deletion position
-    default="22190-22206",  # Forward insert
+    default=None,  # Forward insert
     show_default=True,
 )
 @click.option(
@@ -134,6 +134,13 @@ def str2coors(coorstr):
     help="Minimum sequencing depth at position to be considred",
     type=int,
     default=20,
+    show_default=True,
+)
+@click.option(
+    "--max_seq_depth",
+    help="Maximum sequencing depth at position to be considred",
+    type=int,
+    default=1000000,
     show_default=True,
 )
 @click.option(
@@ -189,7 +196,7 @@ def str2coors(coorstr):
 def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         min_mapping_quality, min_base_quality, ignore_overlaps, min_seq_depth,
         alt_nuc_count, cpu, endlen, codoncountfile, subcountfile,
-        indelcountfile):
+        indelcountfile, max_seq_depth):
     """Expected to that bam file is sorted based on coordinate and indexed."""
     try:
         tp = path.split(codoncountfile.name)[0]
@@ -253,6 +260,8 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         bam_files[i] = bammer.check_sort_and_index_bam(bam, tmp_dir=tmp_dir)
 
     # NOTE: genomic range
+    if not coor_range:
+        coor_range = f"1-{len(ref_seq)}"
     coor_range = str2coors(coor_range)
 
     pool = auto_cpu.cpus(cpu)  # CPU Selection
@@ -266,7 +275,9 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         # TODO: Shift the bottom part and merge in single table
 
         params = {
+            'ref': ref,
             "rid": rid,
+            'tmp_dir': tmp_dir,
             "start": start,
             "end": end,
             "gff_data": gff_data,
@@ -275,6 +286,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
             "ignore_orphans": ignore_orphans,
             "min_mapping_quality": min_mapping_quality,
             "min_seq_depth": min_seq_depth,
+            'max_seq_depth': max_seq_depth,
             "min_base_quality": min_base_quality,
             "ignore_overlaps": ignore_overlaps,
             "alt_nuc_count": alt_nuc_count,

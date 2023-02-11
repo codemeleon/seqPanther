@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import pysam
 import pandas as pd
+import numpy as np
 
 import pyfaidx
-from os import path
+from os import path, system
 
 from .subs import sub_table
 from .indel_frames import indel_frames
@@ -11,7 +12,9 @@ from .indel_frames import indel_frames
 
 def changed_coordinates(params, bam):
     print(f"Analysing {bam}.")
+    ref = params["ref"]
     rid = params["rid"]
+    tmp_dir = params["tmp_dir"]
     start = params["start"]
     end = params["end"]
     endlen = params["endlen"]
@@ -20,6 +23,7 @@ def changed_coordinates(params, bam):
     min_mapping_quality = params["min_mapping_quality"]
     min_base_quality = params["min_base_quality"]
     min_seq_depth = params["min_seq_depth"]
+    max_seq_depth = params["max_seq_depth"]
     alt_nuc_count = params["alt_nuc_count"]
     ignore_overlaps = params["ignore_overlaps"]
 
@@ -30,73 +34,113 @@ def changed_coordinates(params, bam):
         print(samfile.references)
         print(f"Ignoring {bam}")
         return
-    iter = samfile.pileup(
-        rid,
-        start,
-        end,
-        ignore_orphans=ignore_orphans,
-        min_base_quality=min_base_quality,
-        min_mapping_quality=min_mapping_quality,
-        ignore_overlaps=ignore_overlaps,
-        max_depth=1000000,
-    )
+
+    vcf_file = f'{tmp_dir}/{path.split(bam)[-1].split(".")[0]}.vcf'
+
+    # command = f"bcftools mpileup -x -d 20000000 -m 1 -e 10 -L 10000000 --open-prob 10  -Q 0 -A -B -C0 --annotate FORMAT/AD  -Ob -r  NC_045512.2:20000-25000 --no-BAQ -f NC_045512.2.fasta -o test.bcf K032298-consensus_alignment_sorted.bam"
+    command = f"bcftools mpileup --annotate FORMAT/AD -d {max_seq_depth} -L {max_seq_depth} -m 1 -e 40 --open-prob 40 -B -q {min_mapping_quality} -C0 -Q {min_base_quality} -r {rid}:{start}-{end} --no-BAQ -f {ref} -o {vcf_file} {bam}"
+    if ignore_overlaps:
+        command += ' -x'
+    if not ignore_orphans:
+        command += ' -A'
+
+    command += " 2>/dev/null"
+
+    system(command)
+    vcf = pd.read_table(vcf_file,
+                        header=None,
+                        comment="#",
+                        usecols=[0, 1, 7, 9])
+    vcf[9] = vcf[9].apply(lambda x: x.split(':')[1])
+    vcf[9] = vcf[9].apply(lambda x: np.array(list(map(int, x.split(',')))))
+    vcf['total'] = vcf[9].apply(lambda x: np.sum(x))
+    depth = vcf[[1, 'total']].rename(columns={
+        1: 'coor',
+        'total': 'depth'
+    }).sort_values('depth',
+                   ascending=False).drop_duplicates('coor').sort_values('coor')
+
+    vcf = vcf[vcf['total'] > min_seq_depth]
+    vcf[9] = vcf[9] / vcf['total']  # TODO: Keep a copy of this for plotting
+    vcf[9] = vcf[9].apply(lambda x: x[1:])
+
+    vcf = vcf[vcf[9].apply(lambda x: np.sum(x > alt_nuc_count)) > 0]
+
     coordinates_with_change = {}
     indel_pos_type_size = {"coor": [], "indel": [], "seq": []}
-    depth = {"coor": [], "depth": []}
-    for pileupcol in iter:
-        if pileupcol.n < min_seq_depth:
-            continue
-        if (pileupcol.pos >= start) & (pileupcol.pos < end):
-            # TODO: Include base call quality
-            depth["coor"].append(pileupcol.pos)
-            depth["depth"].append(pileupcol.n)
-            bases = {}
-            nuc_indel_count = 0
+    already_used_coordinates = []
+    for row in vcf.to_dict('records'):
+        start, end = (row[1] - 2, row[1] +
+                      3) if row[7].startswith('INDEL') else (row[1] - 1,
+                                                             row[1])
+        iter = samfile.pileup(
+            rid,
+            start,
+            end,
+            ignore_orphans=ignore_orphans,
+            min_base_quality=min_base_quality,
+            min_mapping_quality=min_mapping_quality,
+            ignore_overlaps=ignore_overlaps,
+            max_depth=max_seq_depth,
+        )
+        for pileupcol in iter:
+            if pileupcol.pos >= end:
+                break
+            if pileupcol.pos < start:
+                continue
+            if pileupcol.pos in already_used_coordinates:
+                continue
+            if pileupcol.n < min_seq_depth:
+                continue
+            if (pileupcol.pos >= start) & (pileupcol.pos < end):
+                already_used_coordinates.append(pileupcol.pos)
+                # TODO: Include base call quality
+                bases = {}
+                nuc_indel_count = 0
 
-            for pread in pileupcol.pileups:
+                for pread in pileupcol.pileups:
 
-                if pread.indel:
-                    nuc_indel_count += 1
-                    indel_pos_type_size["coor"].append(pileupcol.pos)
-                    indel_pos_type_size["indel"].append(pread.indel)
-                    if pread.indel > 0:
-                        indel_pos_type_size["seq"].append(
-                            pread.alignment.
-                            query_sequence[pread.query_position +
-                                           1:pread.query_position + 1 +
-                                           pread.indel])
-                    else:
-                        indel_pos_type_size["seq"].append("")
-                    continue
-
-                if not pread.is_del and not pread.is_refskip:
-                    if (pread.query_position < endlen
-                            or (len(pread.alignment.query_sequence) -
-                                pread.query_position + 1) < endlen):
+                    if pread.indel:
+                        nuc_indel_count += 1
+                        indel_pos_type_size["coor"].append(pileupcol.pos)
+                        indel_pos_type_size["indel"].append(pread.indel)
+                        if pread.indel > 0:
+                            indel_pos_type_size["seq"].append(
+                                pread.alignment.
+                                query_sequence[pread.query_position +
+                                               1:pread.query_position + 1 +
+                                               pread.indel])
+                        else:
+                            indel_pos_type_size["seq"].append("")
                         continue
-                    tbase = pread.alignment.query_sequence[
-                        pread.query_position]
-                    if tbase not in bases:
-                        bases[tbase] = {
-                            "nuc_count": 0,
-                            "codon_count": {},
-                        }
-                    bases[pread.alignment.query_sequence[
-                        pread.query_position]]["nuc_count"] += 1
-            # NOTE: Deleting nucleotide which have low frequency
 
-            nucs_to_delete = ""
-            for nuc in bases.keys():
-                if bases[nuc]["nuc_count"] < alt_nuc_count * pileupcol.n:
-                    nucs_to_delete += nuc
-            for nuc in nucs_to_delete:
-                del bases[nuc]
-            if set(bases) - set([sequences[pileupcol.pos].seq]):
-                coordinates_with_change[pileupcol.pos] = {
-                    "bases": bases,
-                    "read_count": pileupcol.n,
-                }
-    depth = pd.DataFrame(depth)
+                    if not pread.is_del and not pread.is_refskip:
+                        if (pread.query_position < endlen
+                                or (len(pread.alignment.query_sequence) -
+                                    pread.query_position + 1) < endlen):
+                            continue
+                        tbase = pread.alignment.query_sequence[
+                            pread.query_position]
+                        if tbase not in bases:
+                            bases[tbase] = {
+                                "nuc_count": 0,
+                                "codon_count": {},
+                            }
+                        bases[pread.alignment.query_sequence[
+                            pread.query_position]]["nuc_count"] += 1
+                # NOTE: Deleting nucleotide which have low frequency
+
+                nucs_to_delete = ""
+                for nuc in bases.keys():
+                    if bases[nuc]["nuc_count"] < alt_nuc_count * pileupcol.n:
+                        nucs_to_delete += nuc
+                for nuc in nucs_to_delete:
+                    del bases[nuc]
+                if set(bases) - set([sequences[pileupcol.pos].seq]):
+                    coordinates_with_change[pileupcol.pos] = {
+                        "bases": bases,
+                        "read_count": pileupcol.n,
+                    }
     indel_pos_type_size = pd.DataFrame(indel_pos_type_size)
     indel_pos_type_size = (indel_pos_type_size.groupby(
         ["coor", "indel",
