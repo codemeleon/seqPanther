@@ -13,7 +13,7 @@ import pandas as pd
 from Bio import SeqIO
 import pyfaidx
 import matplotlib.backends.backend_pdf as bpdf
-from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale
+from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale, xlim
 
 from . import auto_cpu, bammer, coors_with_changes, gff_reader
 
@@ -306,6 +306,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
                 value = value.reindex(
                     np.arange(value.coor.min(),
                               value.coor.max() + 1)).fillna(0)
+                value.to_csv(f"{key}_main.csv")
                 fill_between(value.index,
                              y1=value.depth,
                              y2=0,
@@ -337,6 +338,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
                             s=10)
                 title(key)
                 xlabel("Position in the reference")
+                xlim(value.coor.min() - 10, value.coor.max() + 10)
                 ylabel("Read coverage")
                 legend()
 
