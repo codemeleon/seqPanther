@@ -4,23 +4,17 @@ import pandas as pd
 from .codon_table import codon_table
 from os import path
 from Bio import Seq
-import pysam
 
 
 def sub_table(coordinates_with_change, bam, params):
     sample = path.split(bam)[1]
     sequences = params["sequences"]
-    rid = params["rid"]
-    ignore_orphans = params["ignore_orphans"]
-    ignore_overlaps = params["ignore_overlaps"]
-    min_base_quality = params["min_base_quality"]
     alt_codon_frac = params["alt_codon_frac"]
 
     gff_data = params["gff_data"]
     min_seq_depth = params["min_seq_depth"]
     sample = path.split(bam)[1]
     keys = set(coordinates_with_change)
-    samfile = pysam.AlignmentFile(bam, "rb")
 
     for (
             _,
@@ -34,68 +28,49 @@ def sub_table(coordinates_with_change, bam, params):
             coordinates_with_change[selected_coordinate]["strand"] = row[
                 "strand"]
             shift = (selected_coordinate - row["start"]) % 3
-            iter = samfile.pileup(
-                rid,
-                selected_coordinate,
-                selected_coordinate + 1,
-                ignore_orphans=ignore_orphans,
-                min_mapping_quality=min_base_quality,
-                min_base_quality=min_base_quality,
-                ignore_overlaps=ignore_overlaps,
-                max_depth=1000000,
-            )
             ref_base = sequences[selected_coordinate].seq
             ref_codon = sequences[selected_coordinate -
                                   shift:selected_coordinate - shift + 3].seq
-            total_codon_count = 0
             ref_codon_count = 0
-            for pileupcol in iter:
-                if pileupcol.pos != selected_coordinate:
-                    continue
-                for pread in pileupcol.pileups:
-                    if not pread.is_del and not pread.is_refskip:
-                        codon = pread.alignment.query_sequence[
-                            pread.query_position - shift:pread.query_position -
-                            shift + 3]
-                        if codon == ref_codon:
-                            ref_codon_count += 1
-                        if (codon in codon_table) and (
-                                pread.alignment.query_sequence[
-                                    pread.query_position]
-                                in coordinates_with_change[
-                                    pileupcol.pos]["bases"]):
+            total_codon_count = 0
+            codon_counts = {}
+            bases = coordinates_with_change[selected_coordinate]["bases"]
+            for base in bases.keys():
 
-                            if (codon not in coordinates_with_change[
-                                    pileupcol.pos]["bases"]
-                                [pread.alignment.query_sequence[
-                                    pread.query_position]]["codon_count"]):
-                                coordinates_with_change[pileupcol.pos][
-                                    "bases"][pread.alignment.query_sequence[
-                                        pread.query_position]]["codon_count"][
-                                            codon] = 0
-                            coordinates_with_change[pileupcol.pos]["bases"][
-                                pread.alignment.query_sequence[
-                                    pread.
-                                    query_position]]["codon_count"][codon] += 1
-                            total_codon_count += 1
-                break
+                codons = bases[base]["codons_count"]
+                for extended_codon in codons.keys():
+                    codon = extended_codon[2 - shift:5 - shift]
+                    if '-' in codon:
+                        del codons[extended_codon]
+                        continue
+                    if codon not in codons:
+                        codons[codon] = codons.pop(extended_codon)
+                    else:
+                        codons[codon] += codons.pop(extended_codon)
+                    if codon not in codon_counts:
+                        codon_counts[codon] = 0
+                    codon_counts[codon] += codons[codon]
+                total_codon_count += sum(codons.values())
+                try:
+                    ref_codon_count += codons[ref_codon]
+                except KeyError as _:
+                    pass
 
             # NOTE: Removing less less common codons
             coordinates_with_change[selected_coordinate][
                 "total_codon_count"] = total_codon_count
 
             codons_to_delete = []
-            for base in coordinates_with_change[selected_coordinate]["bases"]:
-                for codon in coordinates_with_change[selected_coordinate][
-                        "bases"][base]["codon_count"]:
-                    if (coordinates_with_change[selected_coordinate]["bases"]
-                        [base]["codon_count"][codon] <
-                            alt_codon_frac * total_codon_count):
-                        codons_to_delete.append([base, codon])
+            for codon in codon_counts.keys():
+                if codon_counts[codon] / total_codon_count < alt_codon_frac:
+                    codons_to_delete.append(codon)
 
-            for base, codon in codons_to_delete:
-                del coordinates_with_change[selected_coordinate]["bases"][
-                    base]["codon_count"][codon]
+            for base in list(bases.key()):
+                for codon in codons_to_delete:
+                    try:
+                        del bases[base]["codons_count"][codon]
+                    except KeyError as _:
+                        pass
 
             # NOTE: Reverse complement
             if row["strand"] == "-":

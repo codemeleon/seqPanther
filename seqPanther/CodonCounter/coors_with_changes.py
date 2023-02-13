@@ -67,7 +67,8 @@ def changed_coordinates(params, bam):
     vcf = vcf[vcf[9].apply(lambda x: np.sum(x > alt_nuc_count)) > 0]
 
     coordinates_with_change = {}
-    indel_pos_type_size = {"coor": [], "indel": [], "seq": []}
+    # indel_pos_type_size = {"coor": [], "indel": [], "seq": []}
+    indel_pos_type_size = {}
     already_used_coordinates = []
     for row in vcf.to_dict('records'):
         start, end = (row[1] - 2, row[1] +
@@ -86,38 +87,36 @@ def changed_coordinates(params, bam):
         for pileupcol in iter:
             if pileupcol.pos >= end:
                 break
-            if pileupcol.pos < start:
-                continue
-            if pileupcol.pos in already_used_coordinates:
-                continue
-            if pileupcol.n < min_seq_depth:
+            if ((pileupcol.pos < start)
+                    or (pileupcol.pos in already_used_coordinates)
+                    or (pileupcol.n < min_seq_depth)):
                 continue
             if (pileupcol.pos >= start) & (pileupcol.pos < end):
                 already_used_coordinates.append(pileupcol.pos)
                 # TODO: Include base call quality
                 bases = {}
-                nuc_indel_count = 0
 
                 for pread in pileupcol.pileups:
 
-                    if pread.indel:
-                        nuc_indel_count += 1
+                    if pread.indel and pread.indel % 3 == 0:
+                        indel_seq = ''  # Deletion
+                        if pread.pos not in indel_pos_type_size:
+                            indel_pos_type_size[pileupcol.pos] = {}
+
                         indel_pos_type_size["coor"].append(pileupcol.pos)
                         indel_pos_type_size["indel"].append(pread.indel)
                         if pread.indel > 0:
-                            indel_pos_type_size["seq"].append(
-                                pread.alignment.
-                                query_sequence[pread.query_position +
-                                               1:pread.query_position + 1 +
-                                               pread.indel])
-                        else:
-                            indel_pos_type_size["seq"].append("")
+                            indel_seq = pread.alignment.query_sequence[
+                                pread.query_position + 1:pread.query_position +
+                                1 + pread.indel]
+
+                            # indel_pos_type_size["seq"].append()
                         continue
 
+                    pread_len = len(pread.alignment.query_sequence)
                     if not pread.is_del and not pread.is_refskip:
-                        if (pread.query_position < endlen
-                                or (len(pread.alignment.query_sequence) -
-                                    pread.query_position + 1) < endlen):
+                        if (pread.query_position < endlen or
+                            (pread_len - pread.query_position + 1) < endlen):
                             continue
                         tbase = pread.alignment.query_sequence[
                             pread.query_position]
@@ -126,8 +125,22 @@ def changed_coordinates(params, bam):
                                 "nuc_count": 0,
                                 "codon_count": {},
                             }
-                        bases[pread.alignment.query_sequence[
-                            pread.query_position]]["nuc_count"] += 1
+                        bases[tbase]["nuc_count"] += 1
+                        add_left = 2 - pread.query_position
+                        add_left = add_left if add_left > 0 else 0
+                        add_right = 2 - (pread_len - pread.query_position - 1)
+                        add_right = add_right if add_right > 0 else 0
+                        add_left = '-' * add_left + pread.alignment.query_sequence[
+                            pread.query_position -
+                            (2 - add_left):pread.query_position]
+                        add_right = pread.alignment.query_sequence[  # It is current + right
+                            pread.query_position:pread.query_position +
+                            (2 - add_right + 1)] + '-' * add_right
+                        seq_chunk = add_left + add_right
+                        if seq_chunk not in bases[tbase]["codon_count"]:
+                            bases[tbase]["codon_count"][seq_chunk] = 0
+                        bases[tbase]["codon_count"][seq_chunk] += 1
+
                 # NOTE: Deleting nucleotide which have low frequency
 
                 nucs_to_delete = ""
@@ -162,6 +175,7 @@ def coor_with_changes_run(params, bam):
     merged_table = None
     merged_table_nuc = None
     res = changed_coordinates(params, bam)
+    print(res[0])
     subs_table = sub_table(res[0], bam, params)
     indelframes = indel_frames(res[1], bam, params)
     merged_table = pd.concat([indelframes[0], indelframes[1], subs_table])
