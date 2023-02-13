@@ -38,7 +38,7 @@ def changed_coordinates(params, bam):
     vcf_file = f'{tmp_dir}/{path.split(bam)[-1].split(".")[0]}.vcf'
 
     # command = f"bcftools mpileup -x -d 20000000 -m 1 -e 10 -L 10000000 --open-prob 10  -Q 0 -A -B -C0 --annotate FORMAT/AD  -Ob -r  NC_045512.2:20000-25000 --no-BAQ -f NC_045512.2.fasta -o test.bcf K032298-consensus_alignment_sorted.bam"
-    command = f"bcftools mpileup --annotate FORMAT/AD -d {max_seq_depth} -L {max_seq_depth} -m 1 -e 40 --open-prob 40 -B -q {min_mapping_quality} -C0 -Q {min_base_quality} -r {rid}:{start}-{end} --no-BAQ -f {ref} -o {vcf_file} {bam}"
+    command = f"bcftools mpileup --annotate FORMAT/AD -d {max_seq_depth} -L {max_seq_depth} -m 1 -e 40 --open-prob 40 -B -q {min_mapping_quality} -C0 -Q {min_base_quality} -r {rid}:{start+1}-{end} --no-BAQ -f {ref} -o {vcf_file} {bam}"
     if ignore_overlaps:
         command += ' -x'
     if not ignore_orphans:
