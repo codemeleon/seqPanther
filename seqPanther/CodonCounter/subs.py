@@ -37,24 +37,26 @@ def sub_table(coordinates_with_change, bam, params):
             bases = coordinates_with_change[selected_coordinate]["bases"]
             for base in bases.keys():
 
-                codons = bases[base]["codons_count"]
+                codons = bases[base]["codon_count"]
+                local_codons = {}
                 for extended_codon in codons.keys():
                     codon = extended_codon[2 - shift:5 - shift]
                     if '-' in codon:
-                        del codons[extended_codon]
                         continue
-                    if codon not in codons:
-                        codons[codon] = codons.pop(extended_codon)
+                    if codon not in local_codons:
+                        local_codons[codon] = codons[extended_codon]
                     else:
-                        codons[codon] += codons.pop(extended_codon)
+                        local_codons[codon] += codons[extended_codon]
                     if codon not in codon_counts:
                         codon_counts[codon] = 0
-                    codon_counts[codon] += codons[codon]
-                total_codon_count += sum(codons.values())
+                    codon_counts[codon] += codons[extended_codon]
+                total_codon_count += sum(local_codons.values())
                 try:
-                    ref_codon_count += codons[ref_codon]
-                except KeyError as _:
+                    ref_codon_count += local_codons[ref_codon]
+                except KeyError:
                     pass
+                coordinates_with_change[selected_coordinate]["bases"][base][
+                    "codon_count"] = local_codons
 
             # NOTE: Removing less less common codons
             coordinates_with_change[selected_coordinate][
@@ -65,11 +67,12 @@ def sub_table(coordinates_with_change, bam, params):
                 if codon_counts[codon] / total_codon_count < alt_codon_frac:
                     codons_to_delete.append(codon)
 
-            for base in list(bases.key()):
+            for base in list(bases.keys()):
                 for codon in codons_to_delete:
                     try:
-                        del bases[base]["codons_count"][codon]
-                    except KeyError as _:
+                        del coordinates_with_change[selected_coordinate][
+                            "bases"][base]["codon_count"][codon]
+                    except KeyError:
                         pass
 
             # NOTE: Reverse complement
@@ -192,4 +195,5 @@ def sub_table(coordinates_with_change, bam, params):
         ],
         axis=1,
     )
+    print(final_table)
     return final_table
