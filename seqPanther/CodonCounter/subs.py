@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 
 import pandas as pd
+import numpy as np
+
 from .codon_table import codon_table
-from os import path
 from Bio import Seq
 
 
 def sub_table(coordinates_with_change, bam, params):
-    sample = path.split(bam)[1]
     sequences = params["sequences"]
+    rid = params["rid"]
+    sample = params["sample"]
     alt_codon_frac = params["alt_codon_frac"]
+    alt_nuc_frac = params["alt_nuc_count"]
 
     gff_data = params["gff_data"]
     min_seq_depth = params["min_seq_depth"]
-    sample = path.split(bam)[1]
     keys = set(coordinates_with_change)
 
     for (
@@ -122,7 +124,6 @@ def sub_table(coordinates_with_change, bam, params):
         "Amino Acid Change": [],
         "Nucleotide Change": [],
         "Codon Change": [],
-        "Sample": [],
         "alt_codon": [],
         "alt": [],
         "total": [],
@@ -130,11 +131,25 @@ def sub_table(coordinates_with_change, bam, params):
         "ref_codon": [],
         "ref_codon_count": [],
     }
+    sub_nuc_dist = {
+        'coor': [],
+        'ref': [],
+        'depth': [],
+        'nucs': [],
+        'nucs_count': []
+    }
     for coor in coordinates_with_change:
         bases = coordinates_with_change[coor]["bases"]
+        nucs = []
+        nucs_count = []
         for base in bases:
+            if bases[base]["nuc_count"] > coordinates_with_change[coor][
+                    'read_count'] * alt_nuc_frac:
+                nucs.append(base)
+                nucs_count.append(bases[base]["nuc_count"])
             if base == coordinates_with_change[coor]["ref_base"]:
                 continue
+
             codon_counts = bases[base]["codon_count"]
             for codon in codon_counts:
                 final_table["Amino Acid Change"].append(
@@ -150,7 +165,6 @@ def sub_table(coordinates_with_change, bam, params):
                         ]+1}:{coordinates_with_change[coor
                             ]["ref_codon"]}>{codon}"""
                 )  # TODO: Correct codon position if it is incorrect
-                final_table["Sample"].append(sample.split(".bam")[0])
                 final_table["alt_codon"].append(codon)
                 final_table["alt"].append(codon_counts[codon])
                 final_table["total"].append(
@@ -161,6 +175,12 @@ def sub_table(coordinates_with_change, bam, params):
                     coordinates_with_change[coor]["ref_codon"])
                 final_table["ref_codon_count"].append(
                     coordinates_with_change[coor]["ref_codon_count"])
+        sub_nuc_dist["coor"].append(coor)
+        sub_nuc_dist["ref"].append(coordinates_with_change[coor]["ref_base"])
+        sub_nuc_dist["depth"].append(
+            coordinates_with_change[coor]["read_count"])
+        sub_nuc_dist["nucs"].append(nucs)
+        sub_nuc_dist["nucs_count"].append(nucs_count)
 
     final_table = pd.DataFrame(final_table)
     final_table = final_table[final_table["total"] >= min_seq_depth]
@@ -195,5 +215,25 @@ def sub_table(coordinates_with_change, bam, params):
         ],
         axis=1,
     )
-    print(final_table)
-    return final_table
+    sub_nuc_dist = pd.DataFrame(sub_nuc_dist)
+    sub_nuc_dist["Nucleotide Frequency"] = sub_nuc_dist.apply(
+        lambda x: ','.join(
+            [f'{n}:{c}' for n, c in zip(x['nucs'], x['nucs_count'])]),
+        axis=1)
+    sub_nuc_dist["Nucleotide Percent"] = sub_nuc_dist.apply(
+        lambda x: ','.join([
+            f"{n}:{'%0.2f' % c}"
+            for n, c in zip(x['nucs'],
+                            np.array(x['nucs_count']) * 100 / x['depth'])
+        ]),
+        axis=1)
+    sub_nuc_dist = sub_nuc_dist.drop(
+        ["nucs", "nucs_count"], axis=1).rename(columns={
+            'depth': 'read_count',
+            'ref': 'Reference Nucleotide'
+        })
+    sub_nuc_dist.insert(0, 'Reference ID', rid)
+    sub_nuc_dist.insert(0, 'Sample', sample)
+    final_table.insert(0, 'Reference ID', rid)
+    final_table.insert(0, 'Sample', sample)
+    return final_table, sub_nuc_dist

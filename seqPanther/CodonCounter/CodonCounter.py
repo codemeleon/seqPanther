@@ -33,10 +33,10 @@ def str2coors(coorstr):
         for coor in coorslist:
             if '-' in coor:
                 start, end = coor.split("-")
-                coorrange.append([int(start) - 1, int(end)])
+                coorrange.append([int(start), int(end)])
                 pass
             else:
-                coorrange.append([int(coor) - 1, int(coor)])
+                coorrange.append([int(coor), int(coor) + 1])
         return coorrange
     except:
         exit(
@@ -281,7 +281,6 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
             "start": start,
             "end": end,
             "gff_data": gff_data,
-            "ref": ref,
             "endlen": endlen,
             "ignore_orphans": ignore_orphans,
             "min_mapping_quality": min_mapping_quality,

@@ -43,6 +43,7 @@ def changed_coordinates(params, bam):
         command += ' -x'
     if not ignore_orphans:
         command += ' -A'
+    print(command)
 
     command += " 2>/dev/null"
 
@@ -66,20 +67,18 @@ def changed_coordinates(params, bam):
 
     vcf = vcf[vcf[9].apply(lambda x: np.sum(x > alt_nuc_count)) > 0]
     # print(vcf)
-    vcf = vcf[vcf[1] == 21764]
+    # vcf = vcf[vcf[1] == 21764]
 
     coordinates_with_change = {}
     indel_pos_type_size = {}
-    vcf = vcf[vcf[7].str.startswith('INDEL')].head(1)
+    reads_to_remove = {}
     for row in vcf.to_dict('records'):
         is_indel = False
         if row[7].startswith('INDEL'):
             is_indel = True
         start, end = (row[1] - 1, row[1])
-        if not is_indel:
-            continue
-        print(start, end)
-        # print(coordinates_with_change)
+        # if not is_indel:
+        # continue
         iter = samfile.pileup(
             rid,
             start,
@@ -92,7 +91,6 @@ def changed_coordinates(params, bam):
         )
         bases = {}
         read_depth = 0
-        reads_to_remove = {}
         for pileupcol in iter:
             # if pileupcol.pos < start - 3:
             # continue
@@ -162,7 +160,8 @@ def changed_coordinates(params, bam):
                         (2 - add_left):pread.query_position]
                     add_right = pread.alignment.query_sequence[  # It is current + right
                         pread.query_position:pread.query_position +
-                        add_right] + '-' * add_right
+                        (3 - add_right)] + '-' * add_right
+
                     seq_chunk = add_left + add_right
                     if seq_chunk not in bases[tbase]["codon_count"]:
                         bases[tbase]["codon_count"][seq_chunk] = 0
@@ -193,7 +192,7 @@ def changed_coordinates(params, bam):
     indel_pos_type_size = pd.DataFrame(
         tab, columns=["coor", "depth", "indel", "ref", "read", "count"])
 
-    print(indel_pos_type_size)
+    # print(indel_pos_type_size)
     # indel_pos_type_size = indel_pos_type_size[indel_pos_type_size["indel"] %
     # 3 == 0]
 
@@ -202,14 +201,13 @@ def changed_coordinates(params, bam):
 
 def coor_with_changes_run(params, bam):
     params["sequences"] = pyfaidx.Fasta(params["ref"])[params["rid"]]
-    merged_table = None
+    params['sample'] = path.basename(bam).split('.bam')[0]
     merged_table_nuc = None
     res = changed_coordinates(params, bam)
-    print(res[0])
     subs_table = sub_table(res[0], bam, params)
     indelframes = indel_frames(res[1], bam, params)
-    merged_table = pd.concat([indelframes[0], indelframes[1], subs_table])
-    flb = path.split(bam)[1].split(".")[0]
+    merged_table = pd.concat([indelframes, subs_table[0]])
+
     res_indel = res[2]
     if len(res_indel):
         res_indel.loc[res_indel["indel"] < 0,
