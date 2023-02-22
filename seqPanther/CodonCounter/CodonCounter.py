@@ -33,10 +33,9 @@ def str2coors(coorstr):
         for coor in coorslist:
             if '-' in coor:
                 start, end = coor.split("-")
-                coorrange.append([int(start) - 1, int(end)])
-                pass
+                coorrange.append([int(start), int(end) + 1])
             else:
-                coorrange.append([int(coor) - 1, int(coor)])
+                coorrange.append([int(coor), int(coor) + 1])
         return coorrange
     except:
         exit(
