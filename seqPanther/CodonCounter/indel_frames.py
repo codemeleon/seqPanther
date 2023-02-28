@@ -3,10 +3,9 @@
 import pandas as pd
 
 from Bio import Seq
-from os import path
 
 
-def indel_frames(indel_pos_type_size, bam, params):
+def indel_frames(indel_pos_type_size, params):
     gff_data = params["gff_data"]
     alt_codon_frac = params["alt_codon_frac"]
     rid = params["rid"]
@@ -15,6 +14,7 @@ def indel_frames(indel_pos_type_size, bam, params):
     indel_pos_type_size["amino_pos"] = 0
     indel_pos_type_size["codon_pos"] = 0
     shift, r_shift = 0, 0
+    print(indel_pos_type_size)
 
     for coor in coors:
         # TODO: use df.to_dict('records'). more detail https://towardsdatascience.com/heres-the-most-efficient-way-to-iterate-through-your-pandas-dataframe-4dad88ac92ee
@@ -66,6 +66,7 @@ def indel_frames(indel_pos_type_size, bam, params):
     cols.remove('count')
     indel_pos_type_size = indel_pos_type_size.groupby(
         cols)['count'].sum().reset_index()
+    print(indel_pos_type_size)
 
     indel_pos_type_size_ref_support = indel_pos_type_size.groupby([
         'coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos'
@@ -96,8 +97,6 @@ def indel_frames(indel_pos_type_size, bam, params):
             'read'])) else 'ins' + x['read'][r_shift:-shift],
         axis=1)
 
-    print(indels_changes)
-
     indel_pos_type_size["Amino Acid Change"] = indel_pos_type_size.apply(
         lambda x:
         f"{Seq.Seq(x['ref']).translate()}{x['amino_pos']}{Seq.Seq(x['read']).translate()}",
@@ -125,4 +124,5 @@ def indel_frames(indel_pos_type_size, bam, params):
     indel_pos_type_size.insert(0, 'Reference ID', rid)
     indel_pos_type_size.insert(0, 'Sample', sample)
     print(indel_pos_type_size)
+    exit('anmol')
     return indel_pos_type_size  # TODO: retrun only one table

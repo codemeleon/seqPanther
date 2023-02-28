@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 import tempfile
-import itertools
 
 from os import path, makedirs
 from glob import glob
-from shutil import rmtree
 from functools import partial
 import click
 import numpy as np
 import pandas as pd
 
-from Bio import SeqIO
 import pyfaidx
 import matplotlib.backends.backend_pdf as bpdf
 from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, yscale
@@ -49,10 +46,6 @@ def str2coors(coorstr):
 @click.option(
     "-bam",
     help="Bam files",
-    # default="/home/devil/Documents/Tools/BitterBits/src/test_data/"
-    # "K032623-rep-consensus_alignment_sorted.REF_NC_045512.2.bam",
-    # default="./test_data/NC_045512.2.sorted.bam",
-    # default="./test_data/InDel/K011018-NC_045512.2_1-consensus_alignment_sorted.bam",  # Deletion
     default="test_data/InDel/Insert/SRR17051909.sorted.bam",  # Inserttion
     type=click.Path(exists=True),
     required=True,
@@ -72,16 +65,12 @@ def str2coors(coorstr):
     type=str,  # click.File("r"),
     default="./test_data/NC_045512.2.fasta",
     required=True,
-    # default="./test_data/NC_045512.2_rev_comp.fasta",
     show_default=True,
 )
 @click.option(
     "-coor_range",
     help="Coordinates in the reference, zero index based, end exclusive",
     type=str,
-    # default="21000-25000", #  Forward sub
-    # default="4900-9000", # Reverse sub
-    # default="22279-22300",  # For Deletion position
     default=None,  # Forward insert
     show_default=True,
 )
@@ -91,7 +80,6 @@ def str2coors(coorstr):
     type=click.File("r"),
     default="/home/devil/Documents/Tools/BitterBits/src/test_data/genemap.gff",
     required=True,
-    # default="./test_data/genemap_rev_complement.gff",
     show_default=True,
 )
 @click.option(
@@ -297,131 +285,140 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
 
         pdf = bpdf.PdfPages("output.pdf")
 
-        for cng in changes:
-            cng[1][0] = cng[1][0].rename(columns={'pos': 'coor'})
-            codon_related.append(cng[0])
-            nuc_sub_related.append(cng[1][0])
-            nuc_indel_related.append(cng[1][1])
-            indel = cng[1][1]
-            if len(indel):
-                ins = indel[indel["indel"] > 1]
-                delt = indel[indel["indel"] < 1]
-            else:
-                ins = pd.DataFrame()
-                delt = pd.DataFrame()
-            for key, value in cng[-1].items():
-                if not len(value):
-                    continue
-                fig = figure(figsize=(8, 6))
-                value.index = value.coor
-                value = value.reindex(
-                    np.arange(value.coor.min(),
-                              value.coor.max() + 1)).fillna(0)
-                fill_between(value.index,
-                             y1=value.depth,
-                             y2=0,
-                             alpha=0.5,
-                             color='gray',
-                             linewidth=0)
-                sub = value[value.coor.isin(cng[1][0].coor)]
+        for sample, merged_table, depth in changes:
+            print(merged_table)
+            # codon_related.append(merged_table)
+            change_types = pd.DataFrame(
+                merged_table.apply(lambda x: x["Nucleotide Change"].split(':'),
+                                   axis=1).values.tolist(),
+                columns=["coor", "changes"])
+            change_types[['from', 'to'
+                          ]] = change_types['changes'].str.split('>',
+                                                                 expand=True)
+            change_types.drop(columns=['changes'], inplace=True)
+            # change column type
+            change_types['coor'] = change_types['coor'].astype(int)
+            change_types = change_types.merge(depth, on="coor", how="inner")
+            change_types["type"] = 's'
+            change_types.loc[change_types["from"].
+                             apply(len) > change_types["to"].apply(len),
+                             "type"] = 'd'
+            change_types.loc[change_types["from"].
+                             apply(len) < change_types["to"].apply(len),
+                             "type"] = 'i'
+            print(change_types)
+
+            fig = figure(figsize=(8, 6))
+            depth.index = depth.coor
+            depth = depth.reindex(
+                np.arange(depth.coor.min(),
+                          depth.coor.max() + 1)).fillna(0)
+            fill_between(depth.index,
+                         y1=depth.depth,
+                         y2=0,
+                         alpha=0.5,
+                         color='gray',
+                         linewidth=0)
+            sub = change_types[change_types["type"] == "s"]
+            if not sub.empty:
                 scatter(sub["coor"],
                         sub["depth"],
                         color="green",
                         label="Substitutions",
                         alpha=0.4,
                         s=10)
-                if len(ins):
-                    inst = value[value.coor.isin(ins.coor)]
-                    scatter(inst["coor"],
-                            inst["depth"],
-                            color="red",
-                            label="Insertions",
-                            alpha=0.4,
-                            s=10)
-                if len(delt):
-                    deltt = value[value.coor.isin(delt.coor)]
-                    scatter(deltt["coor"],
-                            deltt["depth"],
-                            color="blue",
-                            label="Deletions",
-                            alpha=0.4,
-                            s=10)
-                title(key)
-                xlabel("Position in the reference")
-                ylabel("Read coverage")
-                legend()
+            ins = change_types[change_types["type"] == "i"]
+            if not ins.empty:
+                scatter(ins["coor"],
+                        ins["depth"],
+                        color="red",
+                        label="Insertions",
+                        alpha=0.4,
+                        s=10)
+            dele = change_types[change_types["type"] == "d"]
+            if not dele.empty:
+                scatter(dele["coor"],
+                        dele["depth"],
+                        color="blue",
+                        label="Deletions",
+                        alpha=0.4,
+                        s=10)
+            title(sample)
+            xlabel("Position in the reference")
+            ylabel("Read coverage")
+            legend()
 
-                yscale('log')
-                pdf.savefig(fig)
+            yscale('log')
+            pdf.savefig(fig)
 
         pdf.close()
 
-    codon_related = pd.concat(codon_related)
-    if len(codon_related):
+    # codon_related = pd.concat(codon_related)
+    # if len(codon_related):
 
-        codon_related.insert(0, "Reference ID", rid)
-        columns = list(codon_related.columns)
-        columns.remove("Sample")
-        columns = ["Sample"] + columns
+    # codon_related.insert(0, "Reference ID", rid)
+    # columns = list(codon_related.columns)
+    # columns.remove("Sample")
+    # columns = ["Sample"] + columns
 
-        codon_related = codon_related[columns]
-        del codon_related["total_codon_count"]
-        codon_related.to_csv(
-            codoncountfile,
-            index=False,
-            sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
+    # codon_related = codon_related[columns]
+    # del codon_related["total_codon_count"]
+    # codon_related.to_csv(
+    # codoncountfile,
+    # index=False,
+    # sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
 
-    nuc_sub_related = pd.concat(nuc_sub_related)
-    if len(nuc_sub_related):
-        nuc_sub_related['coor'] += 1
-        nuc_sub_related = nuc_sub_related.rename(
-            columns={
-                'base_count': 'Nucleotide Frequency',
-                'base_pt': 'Nucleotide Percent',
-                'ref_base': 'Reference Nucleotide',
-                'sample': 'Sample'
-            })
-        nuc_sub_related.insert(0, "Reference ID", rid)
+    # nuc_sub_related = pd.concat(nuc_sub_related)
+    # if len(nuc_sub_related):
+    # nuc_sub_related['coor'] += 1
+    # nuc_sub_related = nuc_sub_related.rename(
+    # columns={
+    # 'base_count': 'Nucleotide Frequency',
+    # 'base_pt': 'Nucleotide Percent',
+    # 'ref_base': 'Reference Nucleotide',
+    # 'sample': 'Sample'
+    # })
+    # nuc_sub_related.insert(0, "Reference ID", rid)
 
-        nuc_sub_related[[
-            "Sample", "Reference ID", "coor", "Reference Nucleotide",
-            "read_count", "Nucleotide Frequency", "Nucleotide Percent"
-        ]].to_csv(subcountfile,
-                  index=False,
-                  sep="\t" if subcountfile.name.endswith(".tsv") else ",")
-    nuc_indel_related = pd.concat(nuc_indel_related)
-    if len(nuc_indel_related):
-        nuc_indel_related["tp"] = "ins"
-        nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "tp"] = "del"
-        # NOTE: Coordinate Correction
-        nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "coor"] += 2
-        nuc_indel_related.loc[nuc_indel_related["indel"] > 0, "coor"] += 1
+    # nuc_sub_related[[
+    # "Sample", "Reference ID", "coor", "Reference Nucleotide",
+    # "read_count", "Nucleotide Frequency", "Nucleotide Percent"
+    # ]].to_csv(subcountfile,
+    # index=False,
+    # sep="\t" if subcountfile.name.endswith(".tsv") else ",")
+    # nuc_indel_related = pd.concat(nuc_indel_related)
+    # if len(nuc_indel_related):
+    # nuc_indel_related["tp"] = "ins"
+    # nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "tp"] = "del"
+    # # NOTE: Coordinate Correction
+    # nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "coor"] += 2
+    # nuc_indel_related.loc[nuc_indel_related["indel"] > 0, "coor"] += 1
 
-        nuc_indel_related["indelx"] = nuc_indel_related.apply(
-            lambda x:
-            f"{x['tp']}{x['seq']}:{x['indel_read_count']},read_count:{x['depth']}",
-            axis=1)
-        nuc_indel_related["indely"] = nuc_indel_related.apply(
-            lambda x: f"{'%0.2f' % x['indel_read_pt']}", axis=1)
-        nuc_indel_related = nuc_indel_related.drop(
-            [
-                "indel", "seq", "indel_read_count", "depth", "indel_read_pt",
-                "tp"
-            ],
-            axis=1).rename(
-                columns={
-                    "indelx": "Nucleotide Frequency",
-                    "indely": "Nucleotide Percent",
-                    "sample": "Sample"
-                })
-        nuc_indel_related.insert(0, "Reference ID", rid)
+    # nuc_indel_related["indelx"] = nuc_indel_related.apply(
+    # lambda x:
+    # f"{x['tp']}{x['seq']}:{x['indel_read_count']},read_count:{x['depth']}",
+    # axis=1)
+    # nuc_indel_related["indely"] = nuc_indel_related.apply(
+    # lambda x: f"{'%0.2f' % x['indel_read_pt']}", axis=1)
+    # nuc_indel_related = nuc_indel_related.drop(
+    # [
+    # "indel", "seq", "indel_read_count", "depth", "indel_read_pt",
+    # "tp"
+    # ],
+    # axis=1).rename(
+    # columns={
+    # "indelx": "Nucleotide Frequency",
+    # "indely": "Nucleotide Percent",
+    # "sample": "Sample"
+    # })
+    # nuc_indel_related.insert(0, "Reference ID", rid)
 
-        nuc_indel_related[[
-            "Sample", "Reference ID", "coor", "Nucleotide Frequency",
-            "Nucleotide Percent"
-        ]].to_csv(indelcountfile,
-                  index=False,
-                  sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
+    # nuc_indel_related[[
+    # "Sample", "Reference ID", "coor", "Nucleotide Frequency",
+    # "Nucleotide Percent"
+    # ]].to_csv(indelcountfile,
+    # index=False,
+    # sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
 
 
 if __name__ == "__main__":

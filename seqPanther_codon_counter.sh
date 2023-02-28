@@ -6,7 +6,7 @@ python setup.py install
 
 #python /seqPanther/CodonCounter/CodonCounter.py \
 seqpanther codoncounter \
-	-bam ./examples/codoncounter/K032284-consensus_alignment_sorted.bam \
+	-bam ./examples/codoncounter/K032298-consensus_alignment_sorted.bam \
 	-rid NC_045512.2 \
 	-ref examples/codoncounter/NC_045512.2.fasta \
 	-gff examples/codoncounter/genemap.gff \

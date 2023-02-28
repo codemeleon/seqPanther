@@ -7,7 +7,7 @@ from .codon_table import codon_table
 from Bio import Seq
 
 
-def sub_table(coordinates_with_change, bam, params):
+def sub_table(coordinates_with_change, params):
     sequences = params["sequences"]
     rid = params["rid"]
     sample = params["sample"]
