@@ -11,25 +11,25 @@ tags:
 authors:
   - name: James Emmanuel San
     orcid: 0000-0002-5736-664X
-    affiliation: 1,2
+    affiliation: "1,2"
   - name: Stephanie Van Wyk
     orcid: 0000-0002-2655-8518
     affiliation: 2
   - name: Houriiyah Tegally
     orcid: 0000-0002-7102-8540
-    affiliation: 1,2
+    affiliation: "1,2"
   - name: Simeon Eche
     orcid: 0000-0001-5494-8372
     affiliation: 3
   - name: Eduan Wilkinson
     orcid: 0000-0002-2503-9441
-    affiliation: 1,2
+    affiliation: "1,2"
   - name: Aquillah M. Kanzi
     orcid: 0000-0001-6081-9438
     affiliation: 1
   - name: de Oliveira Tulio
     orcid: 0000-0002-3027-5254
-    affiliation: 1,2,4
+    affiliation: "1,2,4"
   - name: Anmol M. Kiran
     orcid: 0000-0003-2680-2303
     affiliation: 5
