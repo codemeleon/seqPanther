@@ -22,7 +22,7 @@ def sub_table(coordinates_with_change, params):
             _,
             row,
     ) in gff_data.iterrows():  # TODO: Change it to itertuple for large gff
-        selected_coordinates = keys & set(range(row["start"], row["end"] + 1))
+        selected_coordinates = keys & set(range(row["start"], row["end"] + 2))
         for selected_coordinate in selected_coordinates:
             coordinates_with_change[selected_coordinate]["start"] = row[
                 "start"]
@@ -138,7 +138,11 @@ def sub_table(coordinates_with_change, params):
         'nucs': [],
         'nucs_count': []
     }
+    # coors_to_delete = []
     for coor in coordinates_with_change:
+        if 'ref_base' not in coordinates_with_change[coor]:
+            # coors_to_delete.append(coor)
+            continue
         bases = coordinates_with_change[coor]["bases"]
         nucs = []
         nucs_count = []

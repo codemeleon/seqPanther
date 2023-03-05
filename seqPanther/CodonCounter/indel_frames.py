@@ -13,8 +13,9 @@ def indel_frames(indel_pos_type_size, params):
     coors = set(indel_pos_type_size["coor"])
     indel_pos_type_size["amino_pos"] = 0
     indel_pos_type_size["codon_pos"] = 0
+    indel_pos_type_size["shift"] = 0
+    indel_pos_type_size["r_shift"] = 0
     shift, r_shift = 0, 0
-    print(indel_pos_type_size)
 
     for coor in coors:
         # TODO: use df.to_dict('records'). more detail https://towardsdatascience.com/heres-the-most-efficient-way-to-iterate-through-your-pandas-dataframe-4dad88ac92ee
@@ -36,6 +37,8 @@ def indel_frames(indel_pos_type_size, params):
                                         indel_pos_type_size["coor"] == coor,
                                         ["ref", "read"]].applymap(lambda x: x[
                                             3 - shift:-(3 - r_shift)])
+            indel_pos_type_size.loc[indel_pos_type_size["coor"] == coor,
+                                    ["shift", "r_shift"]] = [shift, r_shift]
 
             amino_pos = (adjusted_coor -
                          gff_row["start"]) // 3  # - 1 * row["indel"]
@@ -52,7 +55,7 @@ def indel_frames(indel_pos_type_size, params):
                         ["ref", "read"]].applymap(
                             lambda x: Seq.Seq(x).reverse_complement())
                 amino_len = (gff_row["end"] - gff_row["start"]) // 3
-                amino_pos = amino_len - amino_pos  # TODO: Change in case of deletion
+                amino_pos = amino_len - amino_pos + 1  # TODO: Change in case of deletion
                 amino_pos = amino_pos + 1 if shift else amino_pos
                 # in case of insertions
                 # TODO: Fix codon Position in reverse direction
@@ -66,7 +69,6 @@ def indel_frames(indel_pos_type_size, params):
     cols.remove('count')
     indel_pos_type_size = indel_pos_type_size.groupby(
         cols)['count'].sum().reset_index()
-    print(indel_pos_type_size)
 
     indel_pos_type_size_ref_support = indel_pos_type_size.groupby([
         'coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos'
@@ -81,8 +83,8 @@ def indel_frames(indel_pos_type_size, params):
         indel_pos_type_size['count'] > indel_pos_type_size['depth'] *
         alt_codon_frac]
 
-    if not len(indel_pos_type_size):
-        return pd.DataFrame()  # TODO: Add dummy columns
+    if indel_pos_type_size.empty:
+        return pd.DataFrame(), pd.DataFrame()  # TODO: Add dummy columns
 
     indels_changes = indel_pos_type_size.copy()
     indels_changes["coor"] = indels_changes['codon_pos'] + shift
@@ -103,7 +105,7 @@ def indel_frames(indel_pos_type_size, params):
         axis=1)
     indel_pos_type_size["Nucleotide Change"] = indel_pos_type_size.apply(
         lambda x:
-        f"{x['codon_pos']+shift}:{x['ref'][shift:-r_shift]}>{x['read'][shift:-r_shift]}",
+        f"{x['codon_pos']+x['shift']+(1 if x['indel'] < 0 else 0)}:{x['ref'][x['shift']:-x['r_shift'] if x['r_shift']  else None]}>{x['read'][x['shift']:-x['r_shift'] if x['r_shift']  else None]}",
         axis=1)
     indel_pos_type_size["Codon Change"] = indel_pos_type_size.apply(
         lambda x: f"{x['codon_pos']}:{x['ref']}>{x['read']}", axis=1)
@@ -116,6 +118,35 @@ def indel_frames(indel_pos_type_size, params):
         f"{x['ref']}-{'%0.2f' % (x['ref_count']*100/x['depth'])};{x['read']}-{'%0.2f' % (x['count']*100/x['depth']) }",
         axis=1)
     # TODO: Make Change to nucleide chan showing
+    indel_nuc = indel_pos_type_size[['coor', 'depth', 'ref', 'read', 'count']]
+    indel_nuc[['ref',
+               'read']] = indel_nuc[['ref',
+                                     'read']].applymap(lambda x: ''.join(x))
+    indel_nuc[['ref_len',
+               'read_len']] = indel_nuc[['ref',
+                                         'read']].applymap(lambda x: len(x))
+    indel_nuc['Nucleotide Frequency'] = indel_nuc.apply(
+        lambda x: 'del' + x['ref']
+        if x['ref_len'] > x['read_len'] else 'ins' + x['read'],
+        axis=1)
+    indel_nuc['Nucleotide Percent'] = indel_nuc.apply(
+        lambda x: '%s:%0.2f' %
+        (x["Nucleotide Frequency"], x['count'] * 100 / x['depth']),
+        axis=1)
+    indel_nuc['Nucleotide Frequency'] = indel_nuc.apply(
+        lambda x: '%s:%d' % (x["Nucleotide Frequency"], x['count']), axis=1)
+    indel_nuc = indel_nuc.groupby([
+        'coor', 'depth'
+    ]).apply(lambda x:
+             [list(x['Nucleotide Frequency']),
+              list(x['Nucleotide Percent'])]).reset_index()
+    indel_nuc["Nucleotide Frequency"] = indel_nuc.apply(
+        lambda x: ','.join(x[0][0]) + f',read_count:{x["depth"]}', axis=1)
+
+    indel_nuc["Nucleotide Percent"] = indel_nuc.apply(
+        lambda x: ','.join(x[0][0]), axis=1)
+    indel_nuc = indel_nuc.drop(columns=['depth', 0])
+
     indel_pos_type_size = indel_pos_type_size.drop([
         "coor", "ref_count", "amino_pos", "codon_pos", "read", "ref", "indel",
         "count", "depth"
@@ -123,6 +154,8 @@ def indel_frames(indel_pos_type_size, params):
                                                    axis=1)
     indel_pos_type_size.insert(0, 'Reference ID', rid)
     indel_pos_type_size.insert(0, 'Sample', sample)
-    print(indel_pos_type_size)
-    exit('anmol')
-    return indel_pos_type_size  # TODO: retrun only one table
+    indel_pos_type_size = indel_pos_type_size.drop(
+        columns=['shift', 'r_shift'])
+    indel_nuc.insert(0, 'Reference ID', rid)
+    indel_nuc.insert(0, 'Sample', sample)
+    return indel_pos_type_size, indel_nuc  # TODO: retrun only one table

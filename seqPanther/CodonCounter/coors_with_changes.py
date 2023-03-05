@@ -47,10 +47,14 @@ def changed_coordinates(params, bam):
     command += " 2>/dev/null"
 
     system(command)
-    vcf = pd.read_table(vcf_file,
-                        header=None,
-                        comment="#",
-                        usecols=[0, 1, 7, 9])
+    try:
+        vcf = pd.read_table(vcf_file,
+                            header=None,
+                            comment="#",
+                            usecols=[0, 1, 7, 9])
+    except:
+        print(f"No reads found in {bam} for given genomic regions")
+        return {}, pd.DataFrame(), pd.DataFrame()
     vcf[9] = vcf[9].apply(lambda x: x.split(':')[1])
     vcf[9] = vcf[9].apply(lambda x: np.array(list(map(int, x.split(',')))))
     vcf['total'] = vcf[9].apply(lambda x: np.sum(x))
@@ -65,55 +69,41 @@ def changed_coordinates(params, bam):
     vcf[9] = vcf[9].apply(lambda x: x[1:])
 
     vcf = vcf[vcf[9].apply(lambda x: np.sum(x > alt_nuc_count)) > 0]
-    vcf = vcf.sort_values(1, ascending=False)
-    # TODO: If vcf has no change, return empty dataframe
-    # print(vcf)
-    # vcf = vcf[vcf[1] == 21764]
-    coors = set(vcf[1] - 1)
-    print(vcf)
+    if vcf.empty:
+        print(f"No variants found in {bam}")
+        return {}, pd.DataFrame(), depth
+    vcf = vcf.drop_duplicates(1)
 
     coordinates_with_change = {}
     indel_pos_type_size = {}
     reads_to_remove = {}
-    already_seen = set()
     for row in vcf.itertuples():
-        # print(row)
-        # is_indel = False
-        # if row[3].startswith('INDEL'):
-        # is_indel = True
         start, end = (row[2] - 1, row[2])
-        if start in already_seen:
-            continue
-        # if not is_indel:
-        # continue
-        iter = samfile.pileup(
-            rid,
-            start,
-            end,
-            ignore_orphans=ignore_orphans,
-            min_base_quality=min_base_quality,
-            min_mapping_quality=min_mapping_quality,
-            ignore_overlaps=ignore_overlaps,
-            max_depth=max_seq_depth,
-        )
+        iter = samfile.pileup(rid,
+                              start,
+                              end,
+                              ignore_orphans=ignore_orphans,
+                              min_base_quality=min_base_quality,
+                              min_mapping_quality=min_mapping_quality,
+                              ignore_overlaps=ignore_overlaps,
+                              max_depth=max_seq_depth,
+                              truncate=True)
         bases = {}
         read_depth = 0
         for pileupcol in iter:
-            if (pileupcol.pos not in coors) or (pileupcol.pos in already_seen):
+            if pileupcol.pos != start:
                 continue
-            if pileupcol.pos in coors:
-                already_seen.add(pileupcol.pos)
 
-            # continue
-            # print(pileupcol.pos, pileupcol.n)
             read_depth = pileupcol.n
             reads_to_remove_count = {}
             for pread in pileupcol.pileups:
                 if not pread.query_position:
                     continue
+
                 add_left = pread.query_position - pread.alignment.query_alignment_start
                 add_right = pread.alignment.query_alignment_end - pread.query_position
                 if pread.indel and pread.indel % 3 == 0:
+
                     add_left = 3 - add_left
                     add_left = add_left if add_left > 0 else 0
                     overhang = add_right  # to remove sequence which terminate in between
@@ -140,16 +130,12 @@ def changed_coordinates(params, bam):
                     gp = (pileupcol.pos, pileupcol.n, pread.indel, ref_sq,
                           read_sq)
                     if gp not in indel_pos_type_size:
-                        print(gp)
                         indel_pos_type_size[gp] = 0
                     indel_pos_type_size[gp] += 1
 
                     continue
 
                 if not pread.is_del and not pread.is_refskip:
-                    # if (pread.query_position < endlen or
-                    # (pread_len - pread.query_position + 1) < endlen):
-                    # continue
                     tbase = pread.alignment.query_sequence[
                         pread.query_position]
                     if tbase not in bases:
@@ -179,8 +165,7 @@ def changed_coordinates(params, bam):
             if reads_to_remove_count:
                 reads_to_remove[pileupcol.pos] = reads_to_remove_count
 
-            if pileupcol.pos == start:
-                break
+            break
 
         nucs_to_delete = ""
         for nuc in bases.keys():
@@ -201,26 +186,17 @@ def changed_coordinates(params, bam):
     indel_pos_type_size = pd.DataFrame(
         tab, columns=["coor", "depth", "indel", "ref", "read", "count"])
 
-    # print(indel_pos_type_size)
-    # indel_pos_type_size = indel_pos_type_size[indel_pos_type_size["indel"] %
-    # 3 == 0]
-
     return coordinates_with_change, indel_pos_type_size, depth
 
 
 def coor_with_changes_run(params, bam):
     params["sequences"] = pyfaidx.Fasta(params["ref"])[params["rid"]]
     params['sample'] = path.basename(bam).split('.bam')[0]
-    merged_table_nuc = None
     subs, indels, depth = changed_coordinates(params, bam)
 
-    subs_table = sub_table(subs, params)
-    indelframes = indel_frames(indels, params)
-    merged_table = pd.concat([indelframes, subs_table[0]])
-    # print(merged_table)
-    # print(indelframes)
-    # print(subs_table)
+    subs_table = sub_table(subs, params) if subs else [pd.DataFrame()] * 2
+    indelframes = indel_frames(
+        indels, params) if not indels.empty else [pd.DataFrame()] * 2
+    merged_table = pd.concat([indelframes[0], subs_table[0]])
 
-    # NOTE: Done till here
-
-    return params['sample'], merged_table, depth
+    return params['sample'], merged_table, depth, subs_table[1], indelframes[1]

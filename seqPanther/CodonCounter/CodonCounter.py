@@ -191,7 +191,6 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         makedirs(tp, exist_ok=True) if tp else None
     except Exception as e:
         print(e)
-        exit()
     try:
         tp = path.split(subcountfile.name)[0]
         makedirs(tp, exist_ok=True) if tp else None
@@ -284,10 +283,17 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
         changes = pool.map(changes, bam_files)
 
         pdf = bpdf.PdfPages("output.pdf")
+        all_sub = []
+        all_indel = []
+        all_codon = []
 
-        for sample, merged_table, depth in changes:
-            print(merged_table)
-            # codon_related.append(merged_table)
+        for sample, merged_table, depth, subs, indel in changes:
+
+            if depth.empty:
+                continue
+            all_sub.append(subs)
+            all_indel.append(indel)
+            all_codon.append(merged_table)
             change_types = pd.DataFrame(
                 merged_table.apply(lambda x: x["Nucleotide Change"].split(':'),
                                    axis=1).values.tolist(),
@@ -306,7 +312,6 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
             change_types.loc[change_types["from"].
                              apply(len) < change_types["to"].apply(len),
                              "type"] = 'i'
-            print(change_types)
 
             fig = figure(figsize=(8, 6))
             depth.index = depth.coor
@@ -353,72 +358,18 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
 
         pdf.close()
 
-    # codon_related = pd.concat(codon_related)
-    # if len(codon_related):
-
-    # codon_related.insert(0, "Reference ID", rid)
-    # columns = list(codon_related.columns)
-    # columns.remove("Sample")
-    # columns = ["Sample"] + columns
-
-    # codon_related = codon_related[columns]
-    # del codon_related["total_codon_count"]
-    # codon_related.to_csv(
-    # codoncountfile,
-    # index=False,
-    # sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
-
-    # nuc_sub_related = pd.concat(nuc_sub_related)
-    # if len(nuc_sub_related):
-    # nuc_sub_related['coor'] += 1
-    # nuc_sub_related = nuc_sub_related.rename(
-    # columns={
-    # 'base_count': 'Nucleotide Frequency',
-    # 'base_pt': 'Nucleotide Percent',
-    # 'ref_base': 'Reference Nucleotide',
-    # 'sample': 'Sample'
-    # })
-    # nuc_sub_related.insert(0, "Reference ID", rid)
-
-    # nuc_sub_related[[
-    # "Sample", "Reference ID", "coor", "Reference Nucleotide",
-    # "read_count", "Nucleotide Frequency", "Nucleotide Percent"
-    # ]].to_csv(subcountfile,
-    # index=False,
-    # sep="\t" if subcountfile.name.endswith(".tsv") else ",")
-    # nuc_indel_related = pd.concat(nuc_indel_related)
-    # if len(nuc_indel_related):
-    # nuc_indel_related["tp"] = "ins"
-    # nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "tp"] = "del"
-    # # NOTE: Coordinate Correction
-    # nuc_indel_related.loc[nuc_indel_related["indel"] < 0, "coor"] += 2
-    # nuc_indel_related.loc[nuc_indel_related["indel"] > 0, "coor"] += 1
-
-    # nuc_indel_related["indelx"] = nuc_indel_related.apply(
-    # lambda x:
-    # f"{x['tp']}{x['seq']}:{x['indel_read_count']},read_count:{x['depth']}",
-    # axis=1)
-    # nuc_indel_related["indely"] = nuc_indel_related.apply(
-    # lambda x: f"{'%0.2f' % x['indel_read_pt']}", axis=1)
-    # nuc_indel_related = nuc_indel_related.drop(
-    # [
-    # "indel", "seq", "indel_read_count", "depth", "indel_read_pt",
-    # "tp"
-    # ],
-    # axis=1).rename(
-    # columns={
-    # "indelx": "Nucleotide Frequency",
-    # "indely": "Nucleotide Percent",
-    # "sample": "Sample"
-    # })
-    # nuc_indel_related.insert(0, "Reference ID", rid)
-
-    # nuc_indel_related[[
-    # "Sample", "Reference ID", "coor", "Nucleotide Frequency",
-    # "Nucleotide Percent"
-    # ]].to_csv(indelcountfile,
-    # index=False,
-    # sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
+        pd.concat(all_codon).to_csv(
+            codoncountfile,
+            index=False,
+            sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
+        pd.concat(all_sub).to_csv(
+            subcountfile,
+            index=False,
+            sep="\t" if subcountfile.name.endswith(".tsv") else ",")
+        pd.concat(all_indel).to_csv(
+            indelcountfile,
+            index=False,
+            sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
 
 
 if __name__ == "__main__":
