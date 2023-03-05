@@ -7,7 +7,7 @@ from .codon_table import codon_table
 from Bio import Seq
 
 
-def sub_table(coordinates_with_change, params):
+def sub_table(coordinates_with_changes, params):
     sequences = params["sequences"]
     rid = params["rid"]
     sample = params["sample"]
@@ -16,7 +16,8 @@ def sub_table(coordinates_with_change, params):
 
     gff_data = params["gff_data"]
     min_seq_depth = params["min_seq_depth"]
-    keys = set(coordinates_with_change)
+    keys = set(coordinates_with_changes)
+    coordinates_with_change_cds = {}
 
     for (
             _,
@@ -24,11 +25,11 @@ def sub_table(coordinates_with_change, params):
     ) in gff_data.iterrows():  # TODO: Change it to itertuple for large gff
         selected_coordinates = keys & set(range(row["start"], row["end"] + 2))
         for selected_coordinate in selected_coordinates:
-            coordinates_with_change[selected_coordinate]["start"] = row[
-                "start"]
-            coordinates_with_change[selected_coordinate]["end"] = row["end"]
-            coordinates_with_change[selected_coordinate]["strand"] = row[
-                "strand"]
+            coordinates_with_change = coordinates_with_changes[
+                selected_coordinate].copy()
+            coordinates_with_change["start"] = row["start"]
+            coordinates_with_change["end"] = row["end"]
+            coordinates_with_change["strand"] = row["strand"]
             shift = (selected_coordinate - row["start"]) % 3
             ref_base = sequences[selected_coordinate].seq
             ref_codon = sequences[selected_coordinate -
@@ -36,13 +37,19 @@ def sub_table(coordinates_with_change, params):
             ref_codon_count = 0
             total_codon_count = 0
             codon_counts = {}
-            bases = coordinates_with_change[selected_coordinate]["bases"]
+            bases = coordinates_with_change["bases"]
+
+            if selected_coordinate == 28460:
+                print(bases)
             for base in bases.keys():
 
                 codons = bases[base]["codon_count"]
                 local_codons = {}
+
                 for extended_codon in codons.keys():
                     codon = extended_codon[2 - shift:5 - shift]
+                    if selected_coordinate == 28460:
+                        print(extended_codon, codon, shift, codons)
                     if '-' in codon:
                         continue
                     if codon not in local_codons:
@@ -57,12 +64,11 @@ def sub_table(coordinates_with_change, params):
                     ref_codon_count += local_codons[ref_codon]
                 except KeyError:
                     pass
-                coordinates_with_change[selected_coordinate]["bases"][base][
+                coordinates_with_change["bases"][base][
                     "codon_count"] = local_codons
 
             # NOTE: Removing less less common codons
-            coordinates_with_change[selected_coordinate][
-                "total_codon_count"] = total_codon_count
+            coordinates_with_change["total_codon_count"] = total_codon_count
 
             codons_to_delete = []
             for codon in codon_counts.keys():
@@ -72,8 +78,8 @@ def sub_table(coordinates_with_change, params):
             for base in list(bases.keys()):
                 for codon in codons_to_delete:
                     try:
-                        del coordinates_with_change[selected_coordinate][
-                            "bases"][base]["codon_count"][codon]
+                        del coordinates_with_change["bases"][base][
+                            "codon_count"][codon]
                     except KeyError:
                         pass
 
@@ -81,33 +87,30 @@ def sub_table(coordinates_with_change, params):
             if row["strand"] == "-":
                 ref_codon = str(Seq.Seq(ref_codon).reverse_complement())
                 ref_base = str(Seq.Seq(ref_base).reverse_complement())
-                for k in coordinates_with_change[selected_coordinate]["bases"]:
+                for k in coordinates_with_change["bases"]:
                     # NOTE: base need to be reverse complemented
 
-                    codon_count = coordinates_with_change[selected_coordinate][
-                        "bases"][k]["codon_count"]
+                    codon_count = coordinates_with_change["bases"][k][
+                        "codon_count"]
                     new_codon_count = {}
                     for codon in codon_count:
                         new_codon_count[str(
                             Seq.Seq(codon).reverse_complement()
                         )] = codon_count[codon]
 
-                    coordinates_with_change[selected_coordinate]["bases"][k][
+                    coordinates_with_change["bases"][k][
                         "codon_count"] = new_codon_count
                 new_base = {}
-                for k in coordinates_with_change[selected_coordinate]["bases"]:
-                    new_base[str(Seq.Seq(
-                        k).reverse_complement())] = coordinates_with_change[
-                            selected_coordinate]["bases"][k]
+                for k in coordinates_with_change["bases"]:
+                    new_base[str(Seq.Seq(k).reverse_complement()
+                                 )] = coordinates_with_change["bases"][k]
                 coordinates_with_change[selected_coordinate][
                     "bases"] = new_base
-            coordinates_with_change[selected_coordinate][
-                "ref_codon"] = ref_codon
-            coordinates_with_change[selected_coordinate][
-                "ref_codon_count"] = ref_codon_count
-            coordinates_with_change[selected_coordinate]["codon_pos"] = (
-                selected_coordinate - shift)
-            coordinates_with_change[selected_coordinate]["ref_base"] = ref_base
+            coordinates_with_change["ref_codon"] = ref_codon
+            coordinates_with_change["ref_codon_count"] = ref_codon_count
+            coordinates_with_change["codon_pos"] = (selected_coordinate -
+                                                    shift)
+            coordinates_with_change["ref_base"] = ref_base
 
             if row["strand"] == "+":
 
@@ -116,10 +119,12 @@ def sub_table(coordinates_with_change, params):
             else:
                 amino_pos = (row["end"] - selected_coordinate) // 3 + 1
 
-            coordinates_with_change[selected_coordinate][
-                "amino_pos"] = amino_pos
+            coordinates_with_change["amino_pos"] = amino_pos
+            coordinates_with_change_cds[(
+                row['start'], row['end'], selected_coordinate,
+                row['strand'])] = coordinates_with_change
 
-    # NOTE: Dict to Table
+    # NOTE: Fix below
     final_table = {
         "Amino Acid Change": [],
         "Nucleotide Change": [],
@@ -128,6 +133,9 @@ def sub_table(coordinates_with_change, params):
         "alt": [],
         "total": [],
         "coor": [],
+        "start": [],
+        "end": [],
+        "strand": [],
         "ref_codon": [],
         "ref_codon_count": [],
     }
@@ -155,6 +163,8 @@ def sub_table(coordinates_with_change, params):
                 continue
 
             codon_counts = bases[base]["codon_count"]
+            print(sample, coor, base, codon_counts,
+                  coordinates_with_change[coor])
             for codon in codon_counts:
                 final_table["Amino Acid Change"].append(
                     f"""{codon_table[coordinates_with_change[coor]['ref_codon']

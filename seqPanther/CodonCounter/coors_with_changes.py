@@ -180,6 +180,8 @@ def changed_coordinates(params, bam):
                 "bases": bases,
                 "read_count": read_depth,
             }
+            if start == 28460:
+                print(bases)
     tab = []
     for key, value in indel_pos_type_size.items():
         tab.append([key[0], key[1], key[2], key[3], key[4], value])
