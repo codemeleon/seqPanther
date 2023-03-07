@@ -2,6 +2,8 @@
 
 `SeqPanther` is a Python application that provides the user with a suite of tools to further interrogate the circumstance under which certain mutations occur or are missed and to enables the user to modify the consensus as needed. The tool is applicable to non-segmented bacterial and viral genomes where reads are mapped to a reference sequence. `SeqPanther` generates detailed reports of mutations identified within a genomic segment or positions of interest, including visualization of the genome coverage and depth. The tool is particularly useful in the examination of multiple next-generation sequencing (NGS) short-read samples. Additionally, we have integrated `Seqpatcher`[singh et. al.](https://www.microbiologyresearch.org/content/journal/mgen/10.1099/mgen.0.000774) which supports the merging of Sanger sequences, or consensus thereof into their respective NGS consensus.
 
+![Seqpanther workflow, genome coverage plot and codon count report](https://github.com/codemeleon/seqPanther/blob/master/manuscript/banner.jpg)
+
 SeqPanther consists of the following set of commands:
 
 - **codoncounter**: performs variant calling and generates nucleotide stats at variant sites and reports the impacts of nucleotide changes on amino acids in the translated proteins.
