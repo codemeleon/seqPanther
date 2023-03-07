@@ -43,7 +43,7 @@ def sub_table(coordinates_with_change, params):
                 local_codons = {}
                 for extended_codon in codons.keys():
                     codon = extended_codon[2 - shift:5 - shift]
-                    if '-' in codon:
+                    if '-' in codon or 'N' in codon:
                         continue
                     if codon not in local_codons:
                         local_codons[codon] = codons[extended_codon]
