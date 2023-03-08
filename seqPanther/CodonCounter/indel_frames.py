@@ -15,7 +15,9 @@ def indel_frames(indel_pos_type_size, params):
     indel_pos_type_size["codon_pos"] = 0
     indel_pos_type_size["shift"] = 0
     indel_pos_type_size["r_shift"] = 0
+    indel_pos_type_size['gene_range'] = '-'
     shift, r_shift = 0, 0
+    indel_pos_type_size_fragmented = []
 
     for coor in coors:
         # TODO: use df.to_dict('records'). more detail https://towardsdatascience.com/heres-the-most-efficient-way-to-iterate-through-your-pandas-dataframe-4dad88ac92ee
@@ -24,6 +26,8 @@ def indel_frames(indel_pos_type_size, params):
             & (gff_data["end"] > coor)].to_dict(
                 'record'
             )  # TODO: Need to make some correction when indel contain end site of CDS or stop codon
+        t_indel_pos_type_size = indel_pos_type_size[indel_pos_type_size["coor"]
+                                                    == coor]
         if not len(t_gff_data):
             print(f'No CDS gff data found for {coor}')
             continue
@@ -32,13 +36,14 @@ def indel_frames(indel_pos_type_size, params):
             adjusted_coor = coor + 1
             shift = (adjusted_coor - gff_row["start"]) % 3  # + 1
             r_shift = (3 - shift) % 3
-            indel_pos_type_size.loc[indel_pos_type_size["coor"] == coor,
-                                    ["ref", "read"]] = indel_pos_type_size.loc[
-                                        indel_pos_type_size["coor"] == coor,
-                                        ["ref", "read"]].applymap(lambda x: x[
-                                            3 - shift:-(3 - r_shift)])
-            indel_pos_type_size.loc[indel_pos_type_size["coor"] == coor,
-                                    ["shift", "r_shift"]] = [shift, r_shift]
+            t_indel_pos_type_size.loc[
+                t_indel_pos_type_size["coor"] == coor,
+                ["ref", "read"]] = t_indel_pos_type_size.loc[
+                    t_indel_pos_type_size["coor"] == coor,
+                    ["ref", "read"]].applymap(
+                        lambda x: x[3 - shift:-(3 - r_shift)])
+            t_indel_pos_type_size.loc[t_indel_pos_type_size["coor"] == coor,
+                                      ["shift", "r_shift"]] = [shift, r_shift]
 
             amino_pos = (adjusted_coor -
                          gff_row["start"]) // 3  # - 1 * row["indel"]
@@ -48,10 +53,10 @@ def indel_frames(indel_pos_type_size, params):
             # TODO: Get the correct sequence
 
             if gff_row["strand"] == "-":
-                indel_pos_type_size.loc[
-                    indel_pos_type_size["coor"] == coor,
-                    ["ref", "read"]] = indel_pos_type_size.loc[
-                        indel_pos_type_size["coor"] == coor,
+                t_indel_pos_type_size.loc[
+                    t_indel_pos_type_size["coor"] == coor,
+                    ["ref", "read"]] = t_indel_pos_type_size.loc[
+                        t_indel_pos_type_size["coor"] == coor,
                         ["ref", "read"]].applymap(
                             lambda x: Seq.Seq(x).reverse_complement())
                 amino_len = (gff_row["end"] - gff_row["start"]) // 3
@@ -61,21 +66,30 @@ def indel_frames(indel_pos_type_size, params):
                 # TODO: Fix codon Position in reverse direction
 
                 shift, r_shift = r_shift, shift
-            indel_pos_type_size.loc[indel_pos_type_size["coor"] == coor,
-                                    "amino_pos"] = amino_pos
-            indel_pos_type_size.loc[indel_pos_type_size["coor"] == coor,
-                                    "codon_pos"] = codon_pos
+            t_indel_pos_type_size.loc[t_indel_pos_type_size["coor"] == coor,
+                                      "amino_pos"] = amino_pos
+            t_indel_pos_type_size.loc[t_indel_pos_type_size["coor"] == coor,
+                                      "codon_pos"] = codon_pos
+            t_indel_pos_type_size.loc[
+                t_indel_pos_type_size["coor"] == coor,
+                'gene_range'] = f"{gff_row['start']}:{gff_row['end']}({gff_row['strand']})"
+        indel_pos_type_size_fragmented.append(t_indel_pos_type_size)
+    indel_pos_type_size = pd.concat(indel_pos_type_size_fragmented)
+    del indel_pos_type_size_fragmented
     cols = indel_pos_type_size.columns.tolist()
     cols.remove('count')
     indel_pos_type_size = indel_pos_type_size.groupby(
         cols)['count'].sum().reset_index()
 
     indel_pos_type_size_ref_support = indel_pos_type_size.groupby([
-        'coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos'
+        'coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos', 'gene_range'
     ])['count'].sum().reset_index().rename(columns={'count': 'ref_count'})
     indel_pos_type_size = indel_pos_type_size.merge(
         indel_pos_type_size_ref_support,
-        on=['coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos'])
+        on=[
+            'coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos',
+            'gene_range'
+        ])
     del indel_pos_type_size_ref_support
     indel_pos_type_size['ref_count'] = indel_pos_type_size[
         'depth'] - indel_pos_type_size['ref_count']

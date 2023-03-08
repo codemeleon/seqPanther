@@ -149,6 +149,8 @@ def changed_coordinates(params, bam):
                     add_left = add_left if add_left > 0 else 0
                     add_right = 3 - add_right
                     add_right = add_right if add_right > 0 else 0
+                    # if pileupcol.pos == 28935:
+                    # print(add_left, add_right)
                     add_left = '-' * add_left + pread.alignment.query_sequence[
                         pread.query_position -
                         (2 - add_left):pread.query_position]
@@ -180,8 +182,6 @@ def changed_coordinates(params, bam):
                 "bases": bases,
                 "read_count": read_depth,
             }
-            if start == 28460:
-                print(bases)
     tab = []
     for key, value in indel_pos_type_size.items():
         tab.append([key[0], key[1], key[2], key[3], key[4], value])
