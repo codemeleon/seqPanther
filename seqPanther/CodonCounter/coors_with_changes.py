@@ -149,6 +149,8 @@ def changed_coordinates(params, bam):
                     add_left = add_left if add_left > 0 else 0
                     add_right = 3 - add_right
                     add_right = add_right if add_right > 0 else 0
+                    # if pileupcol.pos == 28935:
+                    # print(add_left, add_right)
                     add_left = '-' * add_left + pread.alignment.query_sequence[
                         pread.query_position -
                         (2 - add_left):pread.query_position]
