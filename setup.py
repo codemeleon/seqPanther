@@ -4,8 +4,8 @@ setup(
     name="SeqPanther",
     version="0.0.1",
     install_requires=[
-        'biopython>=1.80', 'click>=7.1.2', 'numpy>=1.22.1', 'pandas>=1.5.2',
-        'pyfaidx>=0.6.3.1', 'pysam>=0.18.0', 'matplotlib>=3.6.2'
+        'biopython', 'click', 'numpy', 'pandas', 'pyfaidx', 'pysam',
+        'matplotlib'
     ],
     packages=find_packages(include=["seqPanther", "seqPanther.*"]),
     entry_points={
