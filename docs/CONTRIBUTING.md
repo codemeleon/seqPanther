@@ -9,7 +9,7 @@ To report a bug please open an issue.
 
 ## Request Support or Propose a New Feature
 
-SeqPanther was originally developed for internal use within the (Tulio Lab)[http://krisp.org.za]. We anticipate that usage scenarios will change and additional features required to serve the wider audience.
+SeqPanther was originally developed for internal use within the [Tulio Lab](http://krisp.org.za). We anticipate that usage scenarios will change and additional features required to serve the wider audience.
 
 To request support or propose a new feature, please open an issue or reach out to us via email: sanemmanueljames [at] gmail [dot] org, anmol.kiran [at] gmail [dot] com or tuliodna [at] gmail [dot] com.
 
