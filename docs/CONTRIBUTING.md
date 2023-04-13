@@ -24,9 +24,9 @@ Make your first contribution to this repository by tackling one of the issues li
 
 A good pull request is one that you understand the point of, clarifies the intentions of the code changes, summarizes the code well and identifies some of the thought process involved in writing the code. Also, a great pull request answers some questions before they are asked. Ensure that you provide as much detail as possible in the description. If your code carries a risk such as a security vulnerability, slower performance or fail under certain conditions, be sure to let us know. Finally, provide a testing plan to help us test and integrate your code smoothly.
 
-If this is your first pull request, refer to the (pull request template)[https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository] to help you prepare the submission. Find out more [here](https://www.pullrequest.com/blog/writing-a-great-pull-request-description/).
+If this is your first pull request, refer to the [pull request template](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository) to help you prepare the submission. Find out more [here](https://www.pullrequest.com/blog/writing-a-great-pull-request-description/).
 
 Similarly, a good issue will enable you get more help and faster by making it easy for outside contributors to understand your project and help you out.
 
-Ensure that your issue clearly describes what is going on, includes relevant user research, points to the necessary files, and has a checklist of actions to take. Learn more (here)[https://github.com/codeforamerica/howto/blob/master/Good-GitHub-Issues.md] about how to create a good issue.
+Ensure that your issue clearly describes what is going on, includes relevant user research, points to the necessary files, and has a checklist of actions to take. Learn more [here](https://github.com/codeforamerica/howto/blob/master/Good-GitHub-Issues.md) about how to create a good issue.
 
