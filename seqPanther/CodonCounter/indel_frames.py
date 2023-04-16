@@ -18,6 +18,7 @@ def indel_frames(indel_pos_type_size, params):
     indel_pos_type_size['gene_range'] = '-'
     shift, r_shift = 0, 0
     indel_pos_type_size_fragmented = []
+    print(indel_pos_type_size[indel_pos_type_size['count'] > 10])
 
     for coor in coors:
         # TODO: use df.to_dict('records'). more detail https://towardsdatascience.com/heres-the-most-efficient-way-to-iterate-through-your-pandas-dataframe-4dad88ac92ee
@@ -26,13 +27,13 @@ def indel_frames(indel_pos_type_size, params):
             & (gff_data["end"] > coor)].to_dict(
                 'record'
             )  # TODO: Need to make some correction when indel contain end site of CDS or stop codon
-        t_indel_pos_type_size = indel_pos_type_size[indel_pos_type_size["coor"]
-                                                    == coor]
+
         if not len(t_gff_data):
             print(f'No CDS gff data found for {coor}')
             continue
         for gff_row in t_gff_data:
-
+            t_indel_pos_type_size = indel_pos_type_size[
+                indel_pos_type_size["coor"] == coor]
             adjusted_coor = coor + 1
             shift = (adjusted_coor - gff_row["start"]) % 3  # + 1
             r_shift = (3 - shift) % 3
@@ -42,6 +43,8 @@ def indel_frames(indel_pos_type_size, params):
                     t_indel_pos_type_size["coor"] == coor,
                     ["ref", "read"]].applymap(
                         lambda x: x[3 - shift:-(3 - r_shift)])
+            if coor == 1444:
+                print(t_indel_pos_type_size)
             t_indel_pos_type_size.loc[t_indel_pos_type_size["coor"] == coor,
                                       ["shift", "r_shift"]] = [shift, r_shift]
 
@@ -73,7 +76,7 @@ def indel_frames(indel_pos_type_size, params):
             t_indel_pos_type_size.loc[
                 t_indel_pos_type_size["coor"] == coor,
                 'gene_range'] = f"{gff_row['start']}:{gff_row['end']}({gff_row['strand']})"
-        indel_pos_type_size_fragmented.append(t_indel_pos_type_size)
+            indel_pos_type_size_fragmented.append(t_indel_pos_type_size)
     indel_pos_type_size = pd.concat(indel_pos_type_size_fragmented)
     del indel_pos_type_size_fragmented
     cols = indel_pos_type_size.columns.tolist()
@@ -109,8 +112,8 @@ def indel_frames(indel_pos_type_size, params):
         lambda x: x['count'] / x['depth'], axis=1)
 
     indels_changes["Nucleotide Frequency"] = indels_changes.apply(
-        lambda x: 'del' + x['ref'][r_shift:-shift] if (len(x['ref']) > len(x[
-            'read'])) else 'ins' + x['read'][r_shift:-shift],
+        lambda x: 'del' + x['ref']
+        if (len(x['ref']) > len(x['read'])) else 'ins' + x['read'],
         axis=1)
 
     indel_pos_type_size["Amino Acid Change"] = indel_pos_type_size.apply(
@@ -132,7 +135,10 @@ def indel_frames(indel_pos_type_size, params):
         f"{x['ref']}-{'%0.2f' % (x['ref_count']*100/x['depth'])};{x['read']}-{'%0.2f' % (x['count']*100/x['depth']) }",
         axis=1)
     # TODO: Make Change to nucleide chan showing
-    indel_nuc = indel_pos_type_size[['coor', 'depth', 'ref', 'read', 'count']]
+    indel_nuc = indel_pos_type_size[[
+        'coor', 'indel', 'depth', 'ref', 'read', 'count'
+    ]]
+    print(indel_nuc, 'xxx')
     indel_nuc[['ref',
                'read']] = indel_nuc[['ref',
                                      'read']].applymap(lambda x: ''.join(x))
@@ -150,7 +156,7 @@ def indel_frames(indel_pos_type_size, params):
     indel_nuc['Nucleotide Frequency'] = indel_nuc.apply(
         lambda x: '%s:%d' % (x["Nucleotide Frequency"], x['count']), axis=1)
     indel_nuc = indel_nuc.groupby([
-        'coor', 'depth'
+        'coor', 'depth', "indel"
     ]).apply(lambda x:
              [list(x['Nucleotide Frequency']),
               list(x['Nucleotide Percent'])]).reset_index()
@@ -159,7 +165,10 @@ def indel_frames(indel_pos_type_size, params):
 
     indel_nuc["Nucleotide Percent"] = indel_nuc.apply(
         lambda x: ','.join(x[0][0]), axis=1)
-    indel_nuc = indel_nuc.drop(columns=['depth', 0])
+    indel_nuc["coor"] = indel_nuc.apply(lambda x: (x['coor'] + 1) if
+                                        (x['indel'] > 0) else (x['coor'] + 2),
+                                        axis=1).values
+    indel_nuc = indel_nuc.drop(columns=['depth', 0, 'indel'])
 
     indel_pos_type_size = indel_pos_type_size.drop([
         "coor", "ref_count", "amino_pos", "codon_pos", "read", "ref", "indel",

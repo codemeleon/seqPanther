@@ -132,7 +132,6 @@ def changed_coordinates(params, bam):
                     if gp not in indel_pos_type_size:
                         indel_pos_type_size[gp] = 0
                     indel_pos_type_size[gp] += 1
-
                     continue
 
                 if not pread.is_del and not pread.is_refskip:
@@ -166,7 +165,6 @@ def changed_coordinates(params, bam):
                 # NOTE: Deleting nucleotide which have low frequency
             if reads_to_remove_count:
                 reads_to_remove[pileupcol.pos] = reads_to_remove_count
-
             break
 
         nucs_to_delete = ""
