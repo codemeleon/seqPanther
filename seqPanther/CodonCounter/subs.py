@@ -101,8 +101,7 @@ def sub_table(coordinates_with_changes, params):
                 for k in coordinates_with_change["bases"]:
                     new_base[str(Seq.Seq(k).reverse_complement()
                                  )] = coordinates_with_change["bases"][k]
-                coordinates_with_change[selected_coordinate][
-                    "bases"] = new_base
+                coordinates_with_change["bases"] = new_base
             coordinates_with_change["ref_codon"] = ref_codon
             coordinates_with_change["ref_codon_count"] = ref_codon_count
             coordinates_with_change["codon_pos"] = (selected_coordinate -
@@ -245,6 +244,7 @@ def sub_table(coordinates_with_changes, params):
         })
     sub_nuc_dist.insert(0, 'Reference ID', rid)
     sub_nuc_dist.insert(0, 'Sample', sample)
+    sub_nuc_dist['coor'] += 1
     final_table.insert(0, 'Reference ID', rid)
     final_table.insert(0, 'Sample', sample)
     return final_table, sub_nuc_dist
