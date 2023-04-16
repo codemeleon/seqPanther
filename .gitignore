@@ -52,3 +52,11 @@ rsconnect/
 # OS files
 .DS_Store
 .env
+SeqPanther.egg-info
+build/lib/seqPanther
+dist
+examples
+seqPanther/CodonCounter/__pycache__
+seqPanther/seqPatcher/__pycache__
+seqPanther/seqPatcher/sars_cov_2_genes
+tmp
