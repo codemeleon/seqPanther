@@ -27,27 +27,27 @@ The tool relies on multiple external opensource programs and python modules as l
 1. Samtools
 
    - For sorting bam files and indexing them.
-   - `conda install samtools`
+   - `conda install -c bioconda samtools`
 
 2. Bcftools
 
    - For parsing variant calling and generating consensus sequences.
-   - `conda install bcftools` to install.
+   - `conda install -c bioconda bcftools` to install.
 
 3. Muscle (v. 3.8.31)
 
    - To perform multiple sequence alignment.
-   - `conda install muscle=3.8.31` to install.
+   - `conda install -c bioconda muscle=3.8.31` to install.
 
 4. BLAT
 
    - To query sequence location in the genome.
-   - `conda install blat` to install.
+   - `conda install -c bioconda ucsc-blat` to install.
 
 5. MAFFT
 
    - To align consensus sequence against the reference.
-   - `conda install mafft` to install.
+   - `conda install -c bioconda mafft` to install.
 
 # Installation
 
