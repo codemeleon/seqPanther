@@ -242,6 +242,7 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
              "Exiting")
 
     # Sorting and indexing bam files
+    bam_files = bam_files[:5]
     tmp_dir = tempfile.mkdtemp()
     for i, bam in enumerate(bam_files):
         bam_files[i] = bammer.check_sort_and_index_bam(bam, tmp_dir=tmp_dir)
@@ -253,9 +254,6 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
 
     pool = auto_cpu.cpus(cpu)  # CPU Selection
 
-    codon_related = []
-    nuc_sub_related = []
-    nuc_indel_related = []
     # Parameter to select reads
     for start, end in coor_range:
         # changes = []
