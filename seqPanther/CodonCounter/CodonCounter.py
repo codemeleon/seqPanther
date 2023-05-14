@@ -17,11 +17,11 @@ from pylab import figure, fill_between, scatter, title, xlabel, ylabel, legend, 
 
 from . import auto_cpu, bammer, coors_with_changes, gff_reader
 
-__author__ = "Anmol Kiran"
+__author__ = "Anmol Kiran, San Emmanuel James"
 __organisation__ = (
     "Malawi-Liverpool-Wellcome Trust, Malawi; University of Liverpool, UK")
 __github__ = "codemeleon"
-__email__ = "akiran@mlw.mw"
+__email__ = "akiran@mlw.mw, sanemmanueljames@gmail.com"
 __version__ = "0.0.2"
 
 
