@@ -10,7 +10,6 @@ def indel_frames(indel_pos_type_size, params):
     alt_codon_frac = params["alt_codon_frac"]
     rid = params["rid"]
     sample = params["sample"]
-    indels_changes = indel_pos_type_size.copy()
     coors = set(indel_pos_type_size["coor"])
     indel_pos_type_size_fragmented = []
     indel_pos_type_size["r_shift"] = 0
@@ -31,14 +30,6 @@ def indel_frames(indel_pos_type_size, params):
                      1) % 3  # original reference is zero based
 
             t_indel_pos_type_size["shift"] = shift
-            # t_indel_pos_type_size.loc[t_indel_pos_type_size.indel < 0,
-            # "shift"] = t_indel_pos_type_size.loc[
-            # t_indel_pos_type_size.indel < 0,
-            # "shift"].apply(lambda x: (x + 2) % 3)
-
-            # t_indel_pos_type_size.loc[(t_indel_pos_type_size["coor"] == coor) &
-            # (t_indel_pos_type_size["indel"] < 0),
-            # "shift"] += 1
             t_indel_pos_type_size.loc[(
                 t_indel_pos_type_size["coor"] == coor
             ), "r_shift"] = (3 - t_indel_pos_type_size.loc[
@@ -99,17 +90,6 @@ def indel_frames(indel_pos_type_size, params):
     if indel_pos_type_size.empty:
         return pd.DataFrame(), pd.DataFrame()  # TODO: Add dummy columns
 
-    # indels_changes["coor"] = indels_changes['codon_pos'] + shift
-    # indels_changes.apply(
-    # lambda x: 2 if len(x['ref']) > len(x['read']) else 1, axis=1)
-
-    indels_changes["Nucleotide Percent"] = indels_changes.apply(
-        lambda x: x['count'] / x['depth'], axis=1)
-
-    indels_changes["Nucleotide Frequency"] = indels_changes.apply(
-        lambda x: 'del' + x['ref']
-        if (len(x['ref']) > len(x['read'])) else 'ins' + x['read'],
-        axis=1)
     indel_pos_type_size.loc[indel_pos_type_size.indel > 0,
                             "amino_pos"] = indel_pos_type_size[
                                 indel_pos_type_size.indel > 0].apply(
@@ -171,9 +151,7 @@ def indel_frames(indel_pos_type_size, params):
         'read',
         'count',
     ]]
-    indel_nuc[['ref',
-               'read']] = indel_nuc[['ref',
-                                     'read']].applymap(lambda x: x[3:-3])
+
     indel_nuc[['ref',
                'read']] = indel_nuc[['ref',
                                      'read']].applymap(lambda x: ''.join(x))
