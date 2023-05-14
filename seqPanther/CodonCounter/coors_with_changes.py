@@ -17,7 +17,6 @@ def changed_coordinates(params, bam):
     tmp_dir = params["tmp_dir"]
     start = params["start"]
     end = params["end"]
-    endlen = params["endlen"]
     sequences = params["sequences"]
     ignore_orphans = params["ignore_orphans"]
     min_mapping_quality = params["min_mapping_quality"]
@@ -28,12 +27,6 @@ def changed_coordinates(params, bam):
     ignore_overlaps = params["ignore_overlaps"]
 
     samfile = pysam.AlignmentFile(bam, "rb")
-    if rid not in samfile.references:
-        print(f"Given reference {rid} not in given bam file {bam}")
-        print("List of references")
-        print(samfile.references)
-        print(f"Ignoring {bam}")
-        return
 
     vcf_file = f'{tmp_dir}/{path.split(bam)[-1].split(".")[0]}.vcf'
 
@@ -52,7 +45,7 @@ def changed_coordinates(params, bam):
                             header=None,
                             comment="#",
                             usecols=[0, 1, 7, 9])
-    except:
+    except Exception:
         print(f"No reads found in {bam} for given genomic regions")
         return {}, pd.DataFrame(), pd.DataFrame()
     vcf[9] = vcf[9].apply(lambda x: x.split(':')[1])

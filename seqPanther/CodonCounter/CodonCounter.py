@@ -35,10 +35,9 @@ def str2coors(coorstr):
             else:
                 coorrange.append([int(coor), int(coor) + 1])
         return coorrange
-    except:
-        exit(
-            "Coordinate accept only , and - as alpha numeric values. Please check your coordinate input"
-        )
+    except Exception:
+        exit("Coordinate accept only , and - as alpha numeric values."
+             "check your coordinate input")
 
 
 @click.command(context_settings={'help_option_names': ["-h", "--help"]},
@@ -218,34 +217,36 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
     try:
         ref_seq = pyfaidx.Fasta(ref)
     except Exception as e:
-        print(e)
-        exit()
+        exit(e)
+
     try:
         ref_seq = ref_seq[rid]
     except Exception as e:
-        print(e)
-        exit()
+        exit(e)
 
     # Listing bam files
-    bam_files = None
+    t_bam_files = None
 
     if path.isdir(bam):
-        bam_files = glob(f"{bam}/*.bam")
-        if not bam_files:
+        t_bam_files = glob(f"{bam}/*.bam")
+        if not t_bam_files:
             exit("No bam files found in the given directory.\n"
                  f"Directory: {bam}\n"
                  "Exiting")
     elif path.isfile(bam) and bam.endswith(".bam"):
-        bam_files = [bam]
+        t_bam_files = [bam]
     else:
         exit("Bam file is not in the correct format.\n"
              "Exiting")
 
     # Sorting and indexing bam files
-    bam_files = bam_files[:5]
     tmp_dir = tempfile.mkdtemp()
-    for i, bam in enumerate(bam_files):
-        bam_files[i] = bammer.check_sort_and_index_bam(bam, tmp_dir=tmp_dir)
+    bam_files = []
+    for bam in t_bam_files:
+        sorted_bam = bammer.check_sort_and_index_bam(bam, rid, tmp_dir=tmp_dir)
+        if sorted_bam:
+            bam_files.append(sorted_bam)
+    del t_bam_files
 
     # NOTE: genomic range
     if not coor_range:
