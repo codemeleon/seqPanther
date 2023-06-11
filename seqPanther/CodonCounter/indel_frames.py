@@ -5,7 +5,7 @@ import pandas as pd
 from Bio.Seq import Seq
 
 
-def indel_frames(indel_pos_type_size, params):
+def indel_frames(indel_pos_type_size, bam, params):
     gff_data = params["gff_data"]
     alt_codon_frac = params["alt_codon_frac"]
     rid = params["rid"]
@@ -20,7 +20,7 @@ def indel_frames(indel_pos_type_size, params):
                               & (gff_data["end"] >= coor)].to_dict('records')
 
         if not len(t_gff_data):
-            print(f'No CDS gff data found for {coor}')
+            print(f'No CDS gff data found for position {coor} in file {bam}.')
             continue
         for gff_row in t_gff_data:
             t_indel_pos_type_size = indel_pos_type_size[
