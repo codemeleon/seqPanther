@@ -1,303 +1,197 @@
 #!/usr/bin/env python
 
-import pysam
 import pandas as pd
-from collections import Counter
 
-from Bio import Seq
-import pyfaidx
-from os import path
+from Bio.Seq import Seq
 
 
 def indel_frames(indel_pos_type_size, bam, params):
-    rid = params["rid"]
     gff_data = params["gff_data"]
-    sequences = pyfaidx.Fasta(params["ref"])[rid]
-    ignore_orphans = params["ignore_orphans"]
-    min_mapping_quality = params["min_mapping_quality"]
-    min_base_quality = params["min_base_quality"]
-    ignore_overlaps = params["ignore_overlaps"]
-    alt_nuc_count = params["alt_nuc_count"]
     alt_codon_frac = params["alt_codon_frac"]
-    sample = path.split(bam)[1].split(".bam")[0]
+    rid = params["rid"]
+    sample = params["sample"]
+    coors = set(indel_pos_type_size["coor"])
+    indel_pos_type_size_fragmented = []
+    indel_pos_type_size["r_shift"] = 0
 
-    deletion_frame = {}
-    insertion_frame = {}
-    samfile = pysam.AlignmentFile(bam, "rb")
+    for coor in coors:
+        # TODO: use df.to_dict('records'). more detail https://towardsdatascience.com/heres-the-most-efficient-way-to-iterate-through-your-pandas-dataframe-4dad88ac92ee
+        t_gff_data = gff_data[(gff_data["start"] <= coor)
+                              & (gff_data["end"] >= coor)].to_dict('records')
 
-    for _, row in indel_pos_type_size.iterrows():
-        t_gff_data = gff_data[(gff_data["start"] <= row["coor"])
-                              & (gff_data["end"] > row["coor"])]
         if not len(t_gff_data):
-            print(f'No gff data found for {row["coor"]}')
+            print(f'No CDS gff data found for position {coor} in file {bam}.')
             continue
-        for _, gff_row in t_gff_data.iterrows():
-            iter = samfile.pileup(
-                rid,
-                row["coor"],
-                row["coor"] + 1,
-                ignore_orphans=ignore_orphans,
-                min_mapping_quality=min_mapping_quality,
-                min_base_quality=min_base_quality,
-                ignore_overlaps=ignore_overlaps,
-                max_depth=1000000,
-            )
+        for gff_row in t_gff_data:
+            t_indel_pos_type_size = indel_pos_type_size[
+                indel_pos_type_size["coor"] == coor]
 
-            if row["indel"] < 0:
-                for pileupcol in iter:
-                    if pileupcol.pos != row["coor"]:
-                        continue
-                    adjusted_coor = row["coor"] + 1
-                    shift = (adjusted_coor - gff_row["start"]) % 3  # + 1
-                    r_shift = (3 - shift) % 3
-                    ref_sub_seq = sequences[adjusted_coor -
-                                            shift:adjusted_coor -
-                                            row["indel"] + r_shift].seq
-                    amino_pos = (adjusted_coor -
-                                 gff_row["start"]) // 3  # - 1 * row["indel"]
-                    ref_count = 0
-                    depth = 0
-                    deleted_codon = []
-                    for pread in pileupcol.pileups:
-                        if (pread.alignment.reference_start <= pileupcol.pos
-                                and pileupcol.pos - row["indel"] <
-                                pread.alignment.reference_end):
-                            depth += 1
-                        if pread.indel:
-                            if (pread.indel < 0) and (pread.indel
-                                                      == row["indel"]):
-                                read_sub_seq = pread.alignment.query_sequence[
-                                    pread.query_position - shift +
-                                    1:pread.query_position + r_shift + 1]
-                                if len(read_sub_seq) % 3 == 0:
-                                    deleted_codon.append(read_sub_seq)
-                            continue
+            shift = (coor - gff_row["start"] +
+                     1) % 3  # original reference is zero based
 
-                        if not pread.is_refskip and not pread.is_del:
-                            read_sub_seq = pread.alignment.query_sequence[
-                                pread.query_position - shift +
-                                1:pread.query_position - row["indel"] +
-                                r_shift + 1]
-                            # TODO: Check for indels in given surroundings, can be ignored
+            t_indel_pos_type_size["shift"] = shift
+            t_indel_pos_type_size.loc[(
+                t_indel_pos_type_size["coor"] == coor
+            ), "r_shift"] = (3 - t_indel_pos_type_size.loc[
+                (t_indel_pos_type_size["coor"] == coor), "shift"].values) % 3
+            t_indel_pos_type_size.loc[
+                t_indel_pos_type_size["coor"] == coor,
+                ["shift", "r_shift"]] = t_indel_pos_type_size.loc[
+                    t_indel_pos_type_size["coor"] == coor,
+                    ["shift", "r_shift"]].applymap(lambda x: 3 - x)
 
-                            if read_sub_seq == ref_sub_seq:
-                                ref_count += 1
-                    if pileupcol.pos not in deletion_frame:
-                        deletion_frame[pileupcol.pos] = []
+            amino_pos = (coor - gff_row["start"]) // 3 + 1
 
-                    if gff_row["strand"] == "-":
-                        amino_pos = ((gff_row["end"] - gff_row["start"]) // 3 -
-                                     (len(ref_sub_seq) -
-                                      (shift + r_shift)) // 3 - amino_pos -
-                                     (1 if shift else 0))
-                        shift, r_shift = r_shift, shift
-                        for i, codon in enumerate(deleted_codon):
-                            deleted_codon[i] = Seq.Seq(
-                                codon).reverse_complement()
-                        ref_sub_seq = Seq.Seq(ref_sub_seq).reverse_complement()
-                    deleted_codon = dict(Counter(deleted_codon))
-                    to_del = []
-                    for codon, val in deleted_codon.items():
-                        if val * 1. / depth < alt_codon_frac:
-                            to_del.append(codon)
-                    for codon in to_del:
-                        del deleted_codon[codon]
+            if gff_row["strand"] == "-":
+                amino_len = (gff_row["end"] - gff_row["start"] + 1) // 3
+                amino_pos = amino_len - amino_pos - 1
 
-                    deletion_frame[pileupcol.pos].append({  # +1
-                        "ref":
-                        ref_sub_seq,
-                        "shift":
-                        shift,
-                        "amino_pos":
-                        amino_pos,
-                        "r_shift":
-                        r_shift,
-                        "ref_count":
-                        ref_count,
-                        "alt_count":
-                        deleted_codon,
-                        "strand":
-                        gff_row["strand"],
-                        "depth":
-                        depth
-                    })
-                    break
+            t_indel_pos_type_size.loc[t_indel_pos_type_size["coor"] == coor,
+                                      "amino_pos"] = amino_pos
+            t_indel_pos_type_size.loc[
+                t_indel_pos_type_size["coor"] == coor,
+                "amino_pos"] = t_indel_pos_type_size[
+                    t_indel_pos_type_size["coor"] == coor].apply(
+                        lambda x: x["amino_pos"] + (1
+                                                    if x['indel'] > 0 else 2),
+                        axis=1)
+            t_indel_pos_type_size.loc[
+                t_indel_pos_type_size["coor"] == coor,
+                "codon_pos"] = coor - t_indel_pos_type_size.loc[
+                    t_indel_pos_type_size["coor"] == coor, "shift"]
+            t_indel_pos_type_size.loc[
+                t_indel_pos_type_size["coor"] == coor,
+                'gene_range'] = (f"{gff_row['start']+1}:{gff_row['end']+1}"
+                                 f"({gff_row['strand']})")
+            indel_pos_type_size_fragmented.append(t_indel_pos_type_size)
+    indel_pos_type_size = pd.concat(indel_pos_type_size_fragmented)
+    del indel_pos_type_size_fragmented
+    cols = indel_pos_type_size.columns.tolist()
+    cols.remove('count')
+    indel_pos_type_size = indel_pos_type_size.groupby(
+        cols)['count'].sum().reset_index()
 
-            if row["indel"] > 0:
+    indel_pos_type_size_ref_support = indel_pos_type_size.groupby([
+        'coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos', 'gene_range'
+    ])['count'].sum().reset_index().rename(columns={'count': 'ref_count'})
+    indel_pos_type_size = indel_pos_type_size.merge(
+        indel_pos_type_size_ref_support,
+        on=[
+            'coor', 'depth', 'indel', 'ref', 'amino_pos', 'codon_pos',
+            'gene_range'
+        ])
+    del indel_pos_type_size_ref_support
+    indel_pos_type_size['ref_count'] = indel_pos_type_size[
+        'depth'] - indel_pos_type_size['ref_count']
+    indel_pos_type_size = indel_pos_type_size[
+        indel_pos_type_size['count'] > indel_pos_type_size['depth'] *
+        alt_codon_frac]
 
-                for pileupcol in iter:
-                    if pileupcol.pos != row["coor"]:
-                        continue
+    if indel_pos_type_size.empty:
+        return pd.DataFrame(), pd.DataFrame()  # TODO: Add dummy columns
 
-                    shift = (row["coor"] - gff_row["start"] + 1) % 3  # + 1
-                    amino_pos = (row["coor"] - gff_row["start"] + 1) // 3
+    indel_pos_type_size.loc[indel_pos_type_size.indel > 0,
+                            "amino_pos"] = indel_pos_type_size[
+                                indel_pos_type_size.indel > 0].apply(
+                                    lambda x: x['amino_pos'] -
+                                    (len(x['ref']) // 3 - 1),
+                                    axis=1)
+    indel_pos_type_size.loc[
+        (indel_pos_type_size.indel < 0)
+        & indel_pos_type_size.gene_range.str.contains('-'),
+        "amino_pos"] = indel_pos_type_size[
+            (indel_pos_type_size.indel < 0)
+            & indel_pos_type_size.gene_range.str.contains('-')].apply(
+                lambda x: x['amino_pos'] - (len(x['ref']) // 3 - 2), axis=1)
+    indel_pos_type_size.loc[
+        (indel_pos_type_size.indel < 0)
+        & ~indel_pos_type_size.gene_range.str.contains('-'),
+        "amino_pos"] = indel_pos_type_size[
+            (indel_pos_type_size.indel < 0)
+            & ~indel_pos_type_size.gene_range.str.contains('-')].apply(
+                lambda x: x['amino_pos'] - 1, axis=1)
+    indel_pos_type_size["Nucleotide Change"] = indel_pos_type_size.apply(
+        lambda x: f"{x['coor']+(1 if x['indel'] < 0 else 0)+1}:"
+        f"{x['ref'][3:-3] }"
+        f">{x['read'][3:-3]}",
+        axis=1)
+    indel_pos_type_size["ref"] = indel_pos_type_size.apply(
+        lambda x: x['ref'][x['shift']:-x['r_shift']], axis=1)
+    indel_pos_type_size["read"] = indel_pos_type_size.apply(
+        lambda x: x['read'][x['shift']:-x['r_shift']], axis=1)
 
-                    r_shift = (3 - shift) % 3
-                    ref_sub_seq = sequences[row["coor"] - shift +
-                                            1:row["coor"] + r_shift + 1].seq
-                    inserted_codon = []
-                    ref_count = 0
-                    depth = 0
+    indel_pos_type_size.loc[
+        indel_pos_type_size.gene_range.str.contains('-'),
+        ["ref", "read"]] = indel_pos_type_size.loc[
+            indel_pos_type_size.gene_range.str.contains('-'),
+            ["ref", "read"]].applymap(
+                lambda x: str(Seq(x).reverse_complement()))
+    indel_pos_type_size["Codon Change"] = indel_pos_type_size.apply(
+        lambda x: f"{x['codon_pos']+1}:{x['ref']}>{x['read']}", axis=1)
 
-                    for pread in pileupcol.pileups:
-                        if (pread.alignment.reference_start <= pileupcol.pos
-                                and
-                                pileupcol.pos < pread.alignment.reference_end):
-                            depth += 1
+    indel_pos_type_size["Amino Acid Change"] = indel_pos_type_size.apply(
+        lambda x:
+        f"{Seq(x['ref']).translate()}{x['amino_pos']}{Seq(x['read']).translate()}",
+        axis=1)
+    indel_pos_type_size["codon_count"] = indel_pos_type_size.apply(
+        lambda x: f"{x['ref']}-{x['ref_count']};"
+        f"{x['read']}-{x['count']}",
+        axis=1)
+    indel_pos_type_size["codon_percent"] = indel_pos_type_size.apply(
+        lambda x: f"{x['ref']}-"
+        f"{'%0.2f' % (x['ref_count']*100/x['depth'])};"
+        f"{x['read']}-"
+        f"{'%0.2f' % (x['count']*100/x['depth']) }",
+        axis=1)
+    indel_nuc = indel_pos_type_size[[
+        'coor',
+        'indel',
+        'depth',
+        'ref',
+        'read',
+        'count',
+    ]]
 
-                        if pread.indel > 0:
-                            read_sub_seq = pread.alignment.query_sequence[
-                                pread.query_position - shift +
-                                1:pread.query_position + row["indel"] +
-                                r_shift + 1]
-                            inserted_codon.append(read_sub_seq)
-                        if not pread.is_del and not pread.is_refskip:
-                            read_sub_seq = pread.alignment.query_sequence[
-                                pread.query_position - shift +
-                                1:pread.query_position + r_shift + 1]
-                            if read_sub_seq == ref_sub_seq:
-                                ref_count += 1
+    indel_nuc[['ref',
+               'read']] = indel_nuc[['ref',
+                                     'read']].applymap(lambda x: ''.join(x))
+    indel_nuc[['ref_len',
+               'read_len']] = indel_nuc[['ref',
+                                         'read']].applymap(lambda x: len(x))
+    indel_nuc['Nucleotide Frequency'] = indel_nuc.apply(
+        lambda x: 'del' + x['ref']
+        if x['ref_len'] > x['read_len'] else 'ins' + x['read'],
+        axis=1)
+    indel_nuc['Nucleotide Percent'] = indel_nuc.apply(
+        lambda x: '%s:%0.2f' %
+        (x["Nucleotide Frequency"], x['count'] * 100 / x['depth']),
+        axis=1)
+    indel_nuc['Nucleotide Frequency'] = indel_nuc.apply(
+        lambda x: '%s:%d' % (x["Nucleotide Frequency"], x['count']), axis=1)
+    indel_nuc = indel_nuc.groupby([
+        'coor', 'depth', "indel"
+    ]).apply(lambda x:
+             [list(x['Nucleotide Frequency']),
+              list(x['Nucleotide Percent'])]).reset_index()
+    indel_nuc["Nucleotide Frequency"] = indel_nuc.apply(
+        lambda x: ','.join(x[0][0]) + f',read_count:{x["depth"]}', axis=1)
 
-                    if gff_row["strand"] == "-":
-                        amino_pos = ((gff_row["end"] - gff_row["start"]) // 3 -
-                                     (shift + r_shift) // 3 - amino_pos +
-                                     (1 if shift else 0))
-                        for i, codon in enumerate(inserted_codon):
-                            inserted_codon[i] = Seq.Seq(
-                                codon).reverse_complement()
-                        ref_sub_seq = Seq.Seq(ref_sub_seq).reverse_complement()
-                    inserted_codon = dict(Counter(inserted_codon))
-                    to_del = []
-                    for codon, val in inserted_codon.items():
-                        if val * 1. / depth < alt_codon_frac:
-                            to_del.append(codon)
-                    for codon in to_del:
-                        del inserted_codon[codon]
-                    insertion_frame[pileupcol.pos  # - shift
-                                    ] = {  # Location is where codon start
-                                        "ref": ref_sub_seq,
-                                        "amino_pos": amino_pos,
-                                        "ref_count": ref_count,
-                                        "shift": shift,
-                                        "r_shift": r_shift,
-                                        "alt_count": inserted_codon,
-                                        "strand": gff_row["strand"],
-                                        "depth": depth
-                                    }
-                    break
-    delete_final_table = {
-        "Amino Acid Change": [],
-        "Nucleotide Change": [],
-        "Codon Change": [],
-        "Sample": [],
-        "alt_codon": [],
-        "alt_codon_count": [],
-        "coor": [],
-        "ref_codon": [],
-        "ref_codon_count": [],
-        "total_codon_count": [],
-    }
-    for coor in deletion_frame:
-        codon_count = 0
-        for x in deletion_frame[coor]:
-            codon_count += x["ref_count"] + sum(x["alt_count"].values())
+    indel_nuc["Nucleotide Percent"] = indel_nuc.apply(
+        lambda x: ','.join(x[0][0]), axis=1)
+    indel_nuc["coor"] = indel_nuc.apply(lambda x: (x['coor'] + 1) if
+                                        (x['indel'] > 0) else (x['coor'] + 2),
+                                        axis=1).values
+    indel_nuc = indel_nuc.drop(columns=['depth', 0, 'indel'])
 
-        for info in deletion_frame[coor]:
-            for inserted_seq in info["alt_count"]:
-                delete_final_table["Amino Acid Change"].append(
-                    f"{Seq.Seq(info['ref']).translate()}{info['amino_pos']}{Seq.Seq(inserted_seq).translate()}"
-                )
-                delete_final_table["Codon Change"].append(
-                    f"{coor+(1 if info['shift'] else 2)}:{info['ref']}>{inserted_seq}"
-                )
-                delete_final_table["Nucleotide Change"].append(
-                    f"{coor+(1 if info['shift'] else 2) +(info['shift'] if info['strand']=='+' else info['r_shift'])}:{info['ref'][info['shift']:-1*info['r_shift'] if info['shift'] else len(info['ref'])]}>"
-                )
-                delete_final_table["coor"].append(coor)
-                delete_final_table["ref_codon"].append(info["ref"])
-                delete_final_table["ref_codon_count"].append(info["ref_count"])
-                delete_final_table["Sample"].append(sample)
-                delete_final_table["alt_codon"].append(inserted_seq)
-                delete_final_table["alt_codon_count"].append(
-                    info["alt_count"][inserted_seq])
-                delete_final_table["total_codon_count"].append(codon_count)
-    delete_final_table = pd.DataFrame(delete_final_table)
-    delete_final_table = delete_final_table[
-        delete_final_table["alt_codon_count"] >= alt_nuc_count *
-        (delete_final_table["alt_codon_count"] +
-         delete_final_table["ref_codon_count"])]
-    if not delete_final_table.empty:
-        delete_final_table["codon_count"] = delete_final_table.apply(
-            lambda x:
-            f"{x['ref_codon']}-{x['ref_codon_count']};{x['alt_codon']}-{x['alt_codon_count']}",
-            axis=1,
-        )
-        delete_final_table["codon_percent"] = delete_final_table.apply(
-            lambda x:
-            f"{x['ref_codon']}-{'%0.2f' % (x['ref_codon_count']*100./x['total_codon_count'])};{x['alt_codon']}-{'%0.2f' % (x['alt_codon_count']*100./x['total_codon_count'])}",
-            axis=1,
-        )
-    delete_final_table = delete_final_table.drop(
-        [
-            "ref_codon", "ref_codon_count", "alt_codon", "alt_codon_count",
-            "coor"
-        ],
-        axis=1,
-    )
-
-    insert_final_table = {
-        "Amino Acid Change": [],
-        "Nucleotide Change": [],
-        "Codon Change": [],
-        "Sample": [],
-        "alt_codon": [],
-        "alt_codon_count": [],
-        "coor": [],
-        "ref_codon": [],
-        "ref_codon_count": [],
-    }
-    for coor in insertion_frame:
-        for inserted_seq in insertion_frame[coor]["alt_count"]:
-            insert_final_table["Amino Acid Change"].append(
-                f"{Seq.Seq(insertion_frame[coor]['ref']).translate()}{insertion_frame[coor]['amino_pos']}{Seq.Seq(inserted_seq).translate()}"
-            )
-            insert_final_table["Codon Change"].append(
-                f"{coor+1}:{insertion_frame[coor]['ref']}>{inserted_seq}")
-            insert_final_table["Nucleotide Change"].append(
-                f"{coor+1+insertion_frame[coor]['shift']}:>{inserted_seq[insertion_frame[coor]['shift']:len(inserted_seq)-1*insertion_frame[coor]['r_shift']]}"
-            )
-            # insert_final_table["Codon Change"].append(f"{}{}>{}")
-            insert_final_table["coor"].append(coor)
-            insert_final_table["ref_codon"].append(
-                insertion_frame[coor]["ref"])
-            insert_final_table["ref_codon_count"].append(
-                insertion_frame[coor]["ref_count"])
-            insert_final_table["Sample"].append(sample)
-            insert_final_table["alt_codon"].append(inserted_seq)
-            insert_final_table["alt_codon_count"].append(
-                insertion_frame[coor]["alt_count"][inserted_seq])
-    insert_final_table = pd.DataFrame(insert_final_table)
-    insert_final_table = insert_final_table[
-        insert_final_table["alt_codon_count"] >= alt_nuc_count *
-        (insert_final_table["alt_codon_count"] +
-         insert_final_table["ref_codon_count"])]
-    if not insert_final_table.empty:
-        insert_final_table["codon_count"] = insert_final_table.apply(
-            lambda x:
-            f"{x['ref_codon']}-{x['ref_codon_count']};{x['alt_codon']}-{x['alt_codon_count']}",
-            axis=1,
-        )
-        insert_final_table["codon_percent"] = insert_final_table.apply(
-            lambda x:
-            f"{x['ref_codon']}-{'%0.2f' % (x['ref_codon_count']*100./(x['ref_codon_count']+x['alt_codon_count']))};{x['alt_codon']}-{'%0.2f' % (x['alt_codon_count']*100./(x['ref_codon_count']+x['alt_codon_count']))}",
-            axis=1,
-        )
-    insert_final_table = insert_final_table.drop(
-        [
-            "ref_codon", "ref_codon_count", "alt_codon", "alt_codon_count",
-            "coor"
-        ],
-        axis=1,
-    )
-
-    return delete_final_table, insert_final_table
+    indel_pos_type_size = indel_pos_type_size.drop([
+        "coor", "ref_count", "amino_pos", "codon_pos", "read", "ref", "indel",
+        "count", "depth"
+    ],
+                                                   axis=1)
+    indel_pos_type_size.insert(0, 'Reference ID', rid)
+    indel_pos_type_size.insert(0, 'Sample', sample)
+    indel_pos_type_size = indel_pos_type_size.drop(
+        columns=['shift', 'r_shift'])
+    indel_nuc.insert(0, 'Reference ID', rid)
+    indel_nuc.insert(0, 'Sample', sample)
+    return indel_pos_type_size, indel_nuc  # TODO: retrun only one table

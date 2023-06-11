@@ -17,7 +17,6 @@ def changed_coordinates(params, bam):
     tmp_dir = params["tmp_dir"]
     start = params["start"]
     end = params["end"]
-    endlen = params["endlen"]
     sequences = params["sequences"]
     ignore_orphans = params["ignore_orphans"]
     min_mapping_quality = params["min_mapping_quality"]
@@ -28,12 +27,6 @@ def changed_coordinates(params, bam):
     ignore_overlaps = params["ignore_overlaps"]
 
     samfile = pysam.AlignmentFile(bam, "rb")
-    if rid not in samfile.references:
-        print(f"Given reference {rid} not in given bam file {bam}")
-        print("List of references")
-        print(samfile.references)
-        print(f"Ignoring {bam}")
-        return
 
     vcf_file = f'{tmp_dir}/{path.split(bam)[-1].split(".")[0]}.vcf'
 
@@ -47,10 +40,14 @@ def changed_coordinates(params, bam):
     command += " 2>/dev/null"
 
     system(command)
-    vcf = pd.read_table(vcf_file,
-                        header=None,
-                        comment="#",
-                        usecols=[0, 1, 7, 9])
+    try:
+        vcf = pd.read_table(vcf_file,
+                            header=None,
+                            comment="#",
+                            usecols=[0, 1, 7, 9])
+    except Exception:
+        print(f"No reads found in {bam} for given genomic regions")
+        return {}, pd.DataFrame(), pd.DataFrame()
     vcf[9] = vcf[9].apply(lambda x: x.split(':')[1])
     vcf[9] = vcf[9].apply(lambda x: np.array(list(map(int, x.split(',')))))
     vcf['total'] = vcf[9].apply(lambda x: np.sum(x))
@@ -65,141 +62,134 @@ def changed_coordinates(params, bam):
     vcf[9] = vcf[9].apply(lambda x: x[1:])
 
     vcf = vcf[vcf[9].apply(lambda x: np.sum(x > alt_nuc_count)) > 0]
+    if vcf.empty:
+        print(f"No variants found in {bam}")
+        return {}, pd.DataFrame(), depth
+    vcf = vcf.drop_duplicates(1)
 
     coordinates_with_change = {}
-    indel_pos_type_size = {"coor": [], "indel": [], "seq": []}
-    already_used_coordinates = []
-    for row in vcf.to_dict('records'):
-        start, end = (row[1] - 2, row[1] +
-                      3) if row[7].startswith('INDEL') else (row[1] - 1,
-                                                             row[1])
-        iter = samfile.pileup(
-            rid,
-            start,
-            end,
-            ignore_orphans=ignore_orphans,
-            min_base_quality=min_base_quality,
-            min_mapping_quality=min_mapping_quality,
-            ignore_overlaps=ignore_overlaps,
-            max_depth=max_seq_depth,
-        )
+    indel_pos_type_size = {}
+    reads_to_remove = {}
+    for row in vcf.itertuples():
+        start, end = (row[2] - 1, row[2])
+        iter = samfile.pileup(rid,
+                              start,
+                              end,
+                              ignore_orphans=ignore_orphans,
+                              min_base_quality=min_base_quality,
+                              min_mapping_quality=min_mapping_quality,
+                              ignore_overlaps=ignore_overlaps,
+                              max_depth=max_seq_depth,
+                              truncate=True)
+        bases = {}
+        read_depth = 0
         for pileupcol in iter:
-            if pileupcol.pos >= end:
-                break
-            if pileupcol.pos < start:
+            if pileupcol.pos != start:
                 continue
-            if pileupcol.pos in already_used_coordinates:
-                continue
-            if pileupcol.n < min_seq_depth:
-                continue
-            if (pileupcol.pos >= start) & (pileupcol.pos < end):
-                already_used_coordinates.append(pileupcol.pos)
-                # TODO: Include base call quality
-                bases = {}
-                nuc_indel_count = 0
 
-                for pread in pileupcol.pileups:
+            read_depth = pileupcol.n
+            reads_to_remove_count = {}
+            for pread in pileupcol.pileups:
+                if not pread.query_position:
+                    continue
 
-                    if pread.indel:
-                        nuc_indel_count += 1
-                        indel_pos_type_size["coor"].append(pileupcol.pos)
-                        indel_pos_type_size["indel"].append(pread.indel)
-                        if pread.indel > 0:
-                            indel_pos_type_size["seq"].append(
-                                pread.alignment.
-                                query_sequence[pread.query_position +
-                                               1:pread.query_position + 1 +
-                                               pread.indel])
-                        else:
-                            indel_pos_type_size["seq"].append("")
-                        continue
+                add_left = pread.query_position - pread.alignment.query_alignment_start
+                add_right = pread.alignment.query_alignment_end - pread.query_position
+                if pread.indel and pread.indel % 3 == 0:
 
-                    if not pread.is_del and not pread.is_refskip:
-                        if (pread.query_position < endlen
-                                or (len(pread.alignment.query_sequence) -
-                                    pread.query_position + 1) < endlen):
-                            continue
-                        tbase = pread.alignment.query_sequence[
-                            pread.query_position]
-                        if tbase not in bases:
-                            bases[tbase] = {
-                                "nuc_count": 0,
-                                "codon_count": {},
-                            }
-                        bases[pread.alignment.query_sequence[
-                            pread.query_position]]["nuc_count"] += 1
+                    add_left = 3 - add_left
+                    add_left = add_left if add_left > 0 else 0
+                    overhang = add_right  # to remove sequence which terminate in between
+                    add_right = 4 - add_right
+                    add_right = add_right if add_right > 0 else 0
+
+                    if pread.indel < 0:
+                        if overhang <= abs(pread.indel):
+                            if overhang not in reads_to_remove_count:
+                                reads_to_remove_count[overhang] = 0
+                            reads_to_remove_count[overhang] += 1
+
+                        ref_sq = sequences[start + 1 - 3:start + 1 + 3 -
+                                           pread.indel].seq
+                        read_sq = '-' * add_left + pread.alignment.query_sequence[
+                            pread.query_position + 1 - 3 -
+                            add_left:pread.query_position + 1 + 3 -
+                            add_right] + '-' * add_right
+                    else:
+                        ref_sq = sequences[start + 1 - 3:start + 1 + 3].seq
+                        read_sq = pread.alignment.query_sequence[
+                            pread.query_position + 1 - 3:pread.query_position +
+                            1 + pread.indel + 3]
+                    gp = (pileupcol.pos, pileupcol.n, pread.indel, ref_sq,
+                          read_sq)
+                    if gp not in indel_pos_type_size:
+                        indel_pos_type_size[gp] = 0
+                    indel_pos_type_size[gp] += 1
+                    continue
+
+                if not pread.is_del and not pread.is_refskip:
+                    tbase = pread.alignment.query_sequence[
+                        pread.query_position]
+                    if tbase not in bases:
+                        bases[tbase] = {
+                            "nuc_count": 0,
+                            "codon_count": {},
+                        }
+                    bases[tbase][
+                        "nuc_count"] += 1  # TODO: need to make correction based on mapped reason
+                    add_left = 2 - add_left
+                    add_left = add_left if add_left > 0 else 0
+                    add_right = 3 - add_right
+                    add_right = add_right if add_right > 0 else 0
+                    # if pileupcol.pos == 28935:
+                    # print(add_left, add_right)
+                    add_left = '-' * add_left + pread.alignment.query_sequence[
+                        pread.query_position -
+                        (2 - add_left):pread.query_position]
+                    add_right = pread.alignment.query_sequence[  # It is current + right
+                        pread.query_position:pread.query_position +
+                        (3 - add_right)] + '-' * add_right
+
+                    seq_chunk = add_left + add_right
+                    if seq_chunk not in bases[tbase]["codon_count"]:
+                        bases[tbase]["codon_count"][seq_chunk] = 0
+                    bases[tbase]["codon_count"][seq_chunk] += 1
+
                 # NOTE: Deleting nucleotide which have low frequency
+            if reads_to_remove_count:
+                reads_to_remove[pileupcol.pos] = reads_to_remove_count
+            break
 
-                nucs_to_delete = ""
-                for nuc in bases.keys():
-                    if bases[nuc]["nuc_count"] < alt_nuc_count * pileupcol.n:
-                        nucs_to_delete += nuc
-                for nuc in nucs_to_delete:
-                    del bases[nuc]
-                if set(bases) - set([sequences[pileupcol.pos].seq]):
-                    coordinates_with_change[pileupcol.pos] = {
-                        "bases": bases,
-                        "read_count": pileupcol.n,
-                    }
-    indel_pos_type_size = pd.DataFrame(indel_pos_type_size)
-    indel_pos_type_size = (indel_pos_type_size.groupby(
-        ["coor", "indel",
-         "seq"]).size().reset_index().rename(columns={0: "indel_read_count"}))
-    indel_pos_type_size = indel_pos_type_size.merge(depth, on="coor")
-    indel_pos_type_size = indel_pos_type_size[
-        indel_pos_type_size["indel_read_count"] > alt_nuc_count *
-        indel_pos_type_size[  # TODO: Replace the alt nuc value with indel alt count
-            "depth"]]
-    indel_pos_type_size_full = indel_pos_type_size.copy()
-    indel_pos_type_size = indel_pos_type_size[indel_pos_type_size["indel"] %
-                                              3 == 0]
+        nucs_to_delete = ""
+        for nuc in bases.keys():
+            if nuc == sequences[start].seq:
+                continue
+            if bases[nuc]["nuc_count"] < alt_nuc_count * read_depth:
+                nucs_to_delete += nuc
+        for nuc in nucs_to_delete:
+            del bases[nuc]
+        if set(bases) - set([sequences[start].seq]):
+            coordinates_with_change[start] = {
+                "bases": bases,
+                "read_count": read_depth,
+            }
+    tab = []
+    for key, value in indel_pos_type_size.items():
+        tab.append([key[0], key[1], key[2], key[3], key[4], value])
+    indel_pos_type_size = pd.DataFrame(
+        tab, columns=["coor", "depth", "indel", "ref", "read", "count"])
 
-    return coordinates_with_change, indel_pos_type_size, indel_pos_type_size_full, depth
+    return coordinates_with_change, indel_pos_type_size, depth
 
 
 def coor_with_changes_run(params, bam):
     params["sequences"] = pyfaidx.Fasta(params["ref"])[params["rid"]]
-    merged_table = None
-    merged_table_nuc = None
-    res = changed_coordinates(params, bam)
-    subs_table = sub_table(res[0], bam, params)
-    indelframes = indel_frames(res[1], bam, params)
-    merged_table = pd.concat([indelframes[0], indelframes[1], subs_table])
-    flb = path.split(bam)[1].split(".")[0]
-    res_indel = res[2]
-    if len(res_indel):
-        res_indel.loc[res_indel["indel"] < 0,
-                      "seq"] = res_indel.loc[res_indel["indel"] < 0].apply(
-                          lambda x: params["sequences"][x["coor"] + 1:x["coor"]
-                                                        + 1 - x["indel"]].seq,
-                          axis=1,
-                      )  # NOTE: refefence nucleotide for deletion events
-        res_indel["sample"] = flb
-        res_indel["indel_read_pt"] = (res_indel["indel_read_count"] * 100.0 /
-                                      res_indel["depth"])
-    else:
-        res_indel = pd.DataFrame()
-    # NOTE: Done till here
-    res_sub = res[0]
-    res_table = {"pos": [], "read_count": [], "base_count": [], "base_pt": []}
-    for pos in res_sub:
-        res_table["pos"].append(pos)
-        res_table["read_count"].append(res_sub[pos]["read_count"])
-        base_count = []
-        base_pt = []
-        for base in res_sub[pos]["bases"]:
-            base_count.append(
-                f"{base}: {res_sub[pos]['bases'][base]['nuc_count']}")
-            pt_val = "%.f" % (res_sub[pos]["bases"][base]["nuc_count"] *
-                              100.0 / res_sub[pos]["read_count"])
-            base_pt.append(f"{base}: {pt_val}")
-        res_table["base_count"].append(",".join(base_count).replace(" ", ""))
-        res_table["base_pt"].append(",".join(base_pt).replace(" ", ""))
-    res_table = pd.DataFrame(res_table)
-    if len(res_table):
-        res_table["sample"] = flb
-        res_table["ref_base"] = res_table.apply(
-            lambda x: params["sequences"][x["pos"]].seq, axis=1)
+    params['sample'] = path.basename(bam).split('.bam')[0]
+    subs, indels, depth = changed_coordinates(params, bam)
 
-    merged_table_nuc = [res_table, res_indel]
-    return merged_table, merged_table_nuc, {flb: pd.DataFrame(res[-1])}
+    subs_table = sub_table(subs, params) if subs else [pd.DataFrame()] * 2
+    indelframes = indel_frames(
+        indels, params) if not indels.empty else [pd.DataFrame()] * 2
+    merged_table = pd.concat([indelframes[0], subs_table[0]])
+
+    return params['sample'], merged_table, depth, subs_table[1], indelframes[1]

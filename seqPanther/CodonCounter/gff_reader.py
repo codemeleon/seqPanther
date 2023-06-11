@@ -30,8 +30,6 @@ def gff2tab(gff_buffer):
         ],
     )
     gff_data = gff_data.loc[gff_data["feature"] == "CDS"]
-    gff_data["start"] = gff_data["start"].astype(
-        int) - 1  # NOTE: To make start 0-index based
-    gff_data["end"] = gff_data["end"].astype(
-        int) - 1  # NOTE: To make end 0-index based
+    gff_data["start"] = gff_data["start"].astype(int) - 1
+    gff_data["end"] = gff_data["end"].astype(int) - 1
     return gff_data
