@@ -189,7 +189,7 @@ def coor_with_changes_run(params, bam):
 
     subs_table = sub_table(subs, params) if subs else [pd.DataFrame()] * 2
     indelframes = indel_frames(
-        indels, params) if not indels.empty else [pd.DataFrame()] * 2
+        indels, bam, params) if not indels.empty else [pd.DataFrame()] * 2
     merged_table = pd.concat([indelframes[0], subs_table[0]])
 
     return params['sample'], merged_table, depth, subs_table[1], indelframes[1]
