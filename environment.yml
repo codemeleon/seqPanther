@@ -1,0 +1,12 @@
+name: seqPanther
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bcftools
+  - samtools
+  - muscle=3.8.31
+  - ucsc-blat
+  - mafft
+  - pysam
