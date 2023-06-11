@@ -53,9 +53,9 @@ The tool relies on multiple external opensource programs and python modules as l
 
 ## Option 1: Clone repo and install locally
 
-1. First, clone the project folder (preferably in the applications folder) on your system `git clone https://github.com/codemeleon/seqPanther`
-2. Change directory to the cloned folder `cd seqPanther`
-3. Run the command `python setup.py install` to install.
+1. `git clone https://github.com/codemeleon/seqPanther`
+2. `cd seqPanther`
+3. `pip install .`
 
 ## Option 2: Install directly from Git
 
