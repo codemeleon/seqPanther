@@ -24,6 +24,8 @@ The tool relies on multiple external opensource programs and python modules as l
 
 ### External Tools
 
+- python>=3.7
+
 1. Samtools
 
    - For sorting bam files and indexing them.
