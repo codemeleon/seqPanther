@@ -38,7 +38,7 @@ def changed_coordinates(params, bam):
         command += ' -A'
 
     command += " 2>/dev/null"
-
+    command = command.replace("|", "\|")
     system(command)
     try:
         vcf = pd.read_table(vcf_file,
