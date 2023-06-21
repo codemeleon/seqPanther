@@ -34,7 +34,8 @@ def sub_table(coordinates_with_changes, params):
             shift = (selected_coordinate - row["start"]) % 3
             ref_base = sequences[selected_coordinate].seq
             ref_codon = sequences[selected_coordinate -
-                                  shift:selected_coordinate - shift + 3].seq
+                                  shift:selected_coordinate - shift +
+                                  3].seq.upper()
             ref_codon_count = 0
             total_codon_count = 0
             codon_counts = {}
