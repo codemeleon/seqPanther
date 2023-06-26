@@ -97,9 +97,9 @@ This command help is accessible at `seqpanther seqpatcher` or `seqpanther seqpat
 
 5. To generate a summary of the codons, nucleotides and indel changes in the Spike gene of these samples, use the command `seqpanther codoncounter -bam bam -rid NC_045512.2 -ref GCF_009858895.2_ASM985889v3_genomic.fna -gff GCF_009858895.2_ASM985889v3_genomic.gff -coor_range 21563-25384`. This will generate the summaries for all the files in bam folder.
 
-6. If you only want to generate the results for a single BAM file, run the command as `seqpanther codoncounter -bam ./bam/K032282-consensus_alignment_sorted.bam -rid NC_045512.2 -ref GCF_009858895.2_ASM985889v3_genomic.fna -gff GCF_009858895.2_ASM985889v3_genomic.gff -coor_range 21563-25384` replacing the BAM file name with your specific bam file name in the command. 
-
 The command will generate four outputs in the current folder including: `sub_output.csv` containing details of the nucleotide substitutions, `indel_output.csv` containing details of the indel events, `codon_output.csv` containing details of the codon changes and `output.pdf` which is a plot of genome depth and breadth of coverage annotated with the positions with mutations and indels.
+
+6. If you only want to generate the results for a single BAM file, run the command as `seqpanther codoncounter -bam ./bam/K032282-consensus_alignment_sorted.bam -rid NC_045512.2 -ref GCF_009858895.2_ASM985889v3_genomic.fna -gff GCF_009858895.2_ASM985889v3_genomic.gff -coor_range 21563-25384` replacing the BAM file name with your specific bam file name in the command. 
 
 7. Outputs can be explored using a text file reader (for the text files) and pdf reader (e.g Adobe Reader) for the PDFs. An example command to view the text files would be: `cat sub_output.csv | sed 's/,/ ,/g' | column -t -s, | less -S`. The user needs to explore those files and remove the changes they would like not to be integrated. A text editor of your choice e.g. bbedit or notepad++ can be used to edit the files.
 
@@ -107,7 +107,7 @@ The command will generate four outputs in the current folder including: `sub_out
 
 9. Then execute seqpanther as follows: `seqpanther nucsubs -i NC_045512.2 -r NC_045512.2.fasta -c consensus -t changes -o results` to integrate relevant changes to the consensus sequences. The output will be generated in a folder named `results`.
 
-10. Example data for `seqpanther seqpatcher` is provided in example folder of this project.
+10. Example data for `seqpanther seqpatcher` is provided in `examples/seqpatcher` folder of this project.
 
 11. To run `seqpanther seqpatcher` on the example data, use `seqpanther seqpatcher -s examples/seqpatcher/ab1 -a examples/seqpatcher/assemblies -o Results -t mmf.csv -O sanger.fasta -g 10 -3 True -x del`. It will generate consensus sequences from the Sanger trace files and integrate them into the ngs consensus. The mmf.csv file tells the application whether the sanger data were paired or single ab1, or in single fasta, and sanger.fasta containing all sanger sequences.
 
