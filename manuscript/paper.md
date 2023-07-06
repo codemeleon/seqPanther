@@ -27,7 +27,7 @@ authors:
   - name: Aquillah M. Kanzi
     orcid: 0000-0001-6081-9438
     affiliation: 1
-  - name: de Oliveira Tulio
+  - name: Tulio de Oliveira
     orcid: 0000-0002-3027-5254
     affiliation: "1,2,4"
   - name: Anmol M. Kiran
