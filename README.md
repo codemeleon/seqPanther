@@ -104,3 +104,7 @@ For bug reporting, please open an issue.
 If you use this software please cite:
 
 SeqPanther: Sequence manipulation and mutation statistics toolset. James Emmanuel San, Stephanie Van Wyk, Houriiyah Tegally, Simeon Eche, Eduan Wilkinson, Aquillah M. Kanzi, Tulio de Oliveira, Anmol M. Kiran. bioRxiv 2023. doi: [10.1101/2023.01.26.525629](https://doi.org/10.1101/2023.01.26.525629)
+
+Zenado:
+
+[![DOI](https://zenodo.org/badge/529166378.svg)](https://zenodo.org/badge/latestdoi/529166378)
