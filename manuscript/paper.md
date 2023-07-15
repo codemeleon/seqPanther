@@ -38,9 +38,9 @@ affiliations:
     index: 1
   - name: Centre for Epidemic Response and Innovation, CERI, University of Stellenbosch, Stellenbosch, South Africa
     index: 2
-  - name: Yale University School of Medicine, New Haven, Connecticut, USA
+  - name: Yale University School of Medicine, New Haven, Connecticut, United States of America
     index: 3
-  - name: Department of Global Health, University of Washington, Seattle, WA, USA
+  - name: Department of Global Health, University of Washington, Seattle, WA, United States of America
     index: 4
   - name: University College Cork, Ireland
     index: 5
@@ -130,7 +130,7 @@ Genomic epidemiology and associated public health interventions entirely depend 
 
 # Future prospects:
 
-Many microorganisms have fragmented genes (exons separated by introns), overlapped genes or genes with frameshift events such as Influenza A with a segmented genome, however, at present the tool only supports single-segment genomes without other stated events. We plan to extend it to support complex gene and genome structures. We wish to report INDELs whose length is not a multiple of 3 and yet they are present in the same read and summation leads to a multiple of three. Furthermore, as the cost of sequencing continues to decrease and the capacity to sequence increases, we expect to see a further influx in the number of microbial genomes. To this effect, we intend to implement performance enhancements to reduce the batch analyses running time given a fairly large number of genomes.
+Many microorganisms have fragmented genes (exons separated by introns), overlapping genes or genes with frameshift events such as Influenza A with a segmented genome, however, at present the tool only supports single-segment genomes without other stated events. We plan to extend it to support complex gene and genome structures. We wish to report INDELs whose length is not a multiple of 3 and yet they are present in the same read and summation leads to a multiple of three. Furthermore, as the cost of sequencing continues to decrease and the capacity to sequence increases, we expect to see a further influx in the number of microbial genomes. To this effect, we intend to implement performance enhancements to reduce the batch analyses running time given a fairly large number of genomes.
 
 # Acknowledgements
 
