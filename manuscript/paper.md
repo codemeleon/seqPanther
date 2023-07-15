@@ -42,7 +42,7 @@ affiliations:
     index: 3
   - name: Department of Global Health, University of Washington, Seattle, WA, United States of America
     index: 4
-  - name: University College Cork, Ireland
+  - name: School of Biochemistry and Cell Biology, University College Cork, Cork, T12 XF62, Ireland
     index: 5
 date: 23 January 2023
 output:
