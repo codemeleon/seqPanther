@@ -2,13 +2,16 @@
 
 import pandas as pd
 import numpy as np
+from typing import Dict, Any, Tuple
+from pandas.core.frame import DataFrame
 
 from .codon_table import codon_table
 from copy import deepcopy
 from Bio import Seq
 
 
-def sub_table(coordinates_with_changes, params):
+def sub_table(coordinates_with_changes: Dict[str, Any],
+              params: Dict[str, Any]) -> Tuple[DataFrame, DataFrame]:
     sequences = params["sequences"]
     rid = params["rid"]
     sample = params["sample"]

@@ -1,10 +1,12 @@
 #!/usr/bin/env python
+from typing import TextIO
 
+from pandas.core.frame import DataFrame
 import pandas as pd
 """Reads gff file buffer"""
 
 
-def gff2tab(gff_buffer):
+def gff2tab(gff_buffer: TextIO) -> DataFrame:
     """Convert gff file information to pandas data frame for CDS.
 
     :gff_buffer: gff file buffer

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from typing import List
 import tempfile
 
 from os import path, makedirs
@@ -22,7 +23,7 @@ __email__ = "akiran@mlw.mw, sanemmanueljames@gmail.com"
 __version__ = "0.0.2"
 
 
-def str2coors(coorstr):
+def str2coors(coorstr: str) -> List[List[int]]:
     """Converts comma separated values to coordinates and coordinate ranges."""
     coorslist = [x.strip() for x in coorstr.split(',')]
     try:
@@ -35,7 +36,8 @@ def str2coors(coorstr):
             else:
                 coorrange.append([int(coor), int(coor) + 1])
         return coorrange
-    except Exception:
+    except ValueError as err:
+        print(err)
         exit("Coordinate accept only , and - as alpha numeric values."
              "check your coordinate input")
 
@@ -180,29 +182,18 @@ def str2coors(coorstr):
     default="indel_output.csv",
     show_default=True,
 )
-def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
-        min_mapping_quality, min_base_quality, ignore_overlaps, min_seq_depth,
-        alt_nuc_count, cpu, endlen, codoncountfile, subcountfile,
-        indelcountfile, max_seq_depth):
+def run(bam: str, rid: str, ref: str, coor_range: str, gff: str,
+        ignore_orphans: bool, alt_codon_frac: float, min_mapping_quality: int,
+        min_base_quality: int, ignore_overlaps: bool, min_seq_depth: int,
+        alt_nuc_count: float, cpu: int, endlen: int, codoncountfile: str,
+        subcountfile: str, indelcountfile: str, max_seq_depth: int) -> None:
     """Expected to that bam file is sorted based on coordinate and indexed."""
-    try:
-        tp = path.split(codoncountfile.name)[0]
-        makedirs(tp, exist_ok=True) if tp else None
-    except Exception as e:
-        print(e)
-    try:
-        tp = path.split(subcountfile.name)[0]
-        makedirs(tp, exist_ok=True) if tp else None
-    except Exception as e:
-        print(e)
-        exit()
-
-    try:
-        tp = path.split(indelcountfile.name)[0]
-        makedirs(tp, exist_ok=True) if tp else None
-    except Exception as e:
-        print(e)
-        exit()
+    for fl in [codoncountfile, subcountfile, indelcountfile]:
+        try:
+            tp = path.split(fl.name)[0]
+            makedirs(tp, exist_ok=True) if tp else None
+        except OSError as err:
+            exit(str(err))
 
     gff_data = gff_reader.gff2tab(gff)  # gff to pandas dataframe
     if rid not in gff_data["seq_id"].unique():  # Checking presence of given id
@@ -216,13 +207,13 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
     # reference sequence
     try:
         ref_seq = pyfaidx.Fasta(ref)
-    except Exception as e:
-        exit(e)
+    except IOError as err:
+        exit(str(err))
 
     try:
         ref_seq = ref_seq[rid]
-    except Exception as e:
-        exit(e)
+    except Exception as err:
+        exit(f"Reference id {err} not found in fasta file.")
 
     # Listing bam files
     t_bam_files = None
@@ -251,12 +242,13 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
     # NOTE: genomic range
     if not coor_range:
         coor_range = f"1-{len(ref_seq)}"
-    coor_range = str2coors(coor_range)
+    coor_ranges = str2coors(coor_range)
+    del coor_range
 
     pool = auto_cpu.cpus(cpu)  # CPU Selection
 
     # Parameter to select reads
-    for start, end in coor_range:
+    for start, end in coor_ranges:
         # changes = []
         # TODO: Shift the bottom part and merge in single table
 

@@ -2,10 +2,11 @@
 """Assigns number of CPU should be use by the application."""
 
 from multiprocessing import cpu_count, Pool
+from multiprocessing.pool import Pool as Pl
 import warnings
 
 
-def cpus(ncr):
+def cpus(ncr: int) -> Pl:
     """Return number of cpus to be used based on user provided cores.
     uses all the core is 0 is provided.
     if given number of cores is greater than the number of cores available,

@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
+from typing import Dict, Any, Tuple
+
 import pandas as pd
 
+from pandas.core.frame import DataFrame
 from Bio.Seq import Seq
 
 
-def indel_frames(indel_pos_type_size, bam, params):
+def indel_frames(indel_pos_type_size: DataFrame, bam: str,
+                 params: Dict[str, Any]) -> Tuple[DataFrame, DataFrame]:
     gff_data = params["gff_data"]
     alt_codon_frac = params["alt_codon_frac"]
     rid = params["rid"]
@@ -83,9 +87,9 @@ def indel_frames(indel_pos_type_size, bam, params):
     del indel_pos_type_size_ref_support
     indel_pos_type_size['ref_count'] = indel_pos_type_size[
         'depth'] - indel_pos_type_size['ref_count']
-    indel_pos_type_size = indel_pos_type_size[
-        indel_pos_type_size['count'] > indel_pos_type_size['depth'] *
-        alt_codon_frac]
+    indel_pos_type_size = indel_pos_type_size[indel_pos_type_size['count'] >
+                                              indel_pos_type_size['depth'] *
+                                              alt_codon_frac]
 
     if indel_pos_type_size.empty:
         return pd.DataFrame(), pd.DataFrame()  # TODO: Add dummy columns

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import pysam
+from typing import Dict, Any, Tuple
 import pandas as pd
+from pandas.core.frame import DataFrame
 import numpy as np
 
 import pyfaidx
@@ -10,7 +12,10 @@ from .subs import sub_table
 from .indel_frames import indel_frames
 
 
-def changed_coordinates(params, bam):
+def changed_coordinates(
+        params: Dict[str, Any], bam: str
+) -> Tuple[Dict[int, Dict[str, str | int]], DataFrame, DataFrame]:
+    """Indentify changed coordinates in bam file."""
     print(f"Analysing {bam}.")
     ref = params["ref"]
     rid = params["rid"]
@@ -45,8 +50,9 @@ def changed_coordinates(params, bam):
                             header=None,
                             comment="#",
                             usecols=[0, 1, 7, 9])
-    except Exception:
-        print(f"No reads found in {bam} for given genomic regions")
+    except Exception as err:
+        print(f"No read found in {bam} for given genomic regions")
+        print(err)
         return {}, pd.DataFrame(), pd.DataFrame()
     vcf[9] = vcf[9].apply(lambda x: x.split(':')[1])
     vcf[9] = vcf[9].apply(lambda x: np.array(list(map(int, x.split(',')))))
@@ -182,7 +188,9 @@ def changed_coordinates(params, bam):
     return coordinates_with_change, indel_pos_type_size, depth
 
 
-def coor_with_changes_run(params, bam):
+def coor_with_changes_run(
+        params: Dict[str, Any],
+        bam: str) -> Tuple[str, DataFrame, DataFrame, DataFrame]:
     params["sequences"] = pyfaidx.Fasta(params["ref"])[params["rid"]]
     params['sample'] = path.basename(bam).split('.bam')[0]
     subs, indels, depth = changed_coordinates(params, bam)
