@@ -305,12 +305,10 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
             change_types['coor'] = change_types['coor'].astype(int)
             change_types = change_types.merge(depth, on="coor", how="inner")
             change_types["type"] = 's'
-            change_types.loc[change_types["from"].
-                             apply(len) > change_types["to"].apply(len),
-                             "type"] = 'd'
-            change_types.loc[change_types["from"].
-                             apply(len) < change_types["to"].apply(len),
-                             "type"] = 'i'
+            change_types.loc[change_types["from"].apply(len) >
+                             change_types["to"].apply(len), "type"] = 'd'
+            change_types.loc[change_types["from"].apply(len) <
+                             change_types["to"].apply(len), "type"] = 'i'
 
             fig = figure(figsize=(8, 6))
             depth.index = depth.coor
@@ -323,30 +321,17 @@ def run(bam, rid, coor_range, ref, gff, ignore_orphans, alt_codon_frac,
                          alpha=0.5,
                          color='gray',
                          linewidth=0)
-            sub = change_types[change_types["type"] == "s"]
-            if not sub.empty:
-                scatter(sub["coor"],
-                        sub["depth"],
-                        color="green",
-                        label="Substitutions",
-                        alpha=0.4,
-                        s=10)
-            ins = change_types[change_types["type"] == "i"]
-            if not ins.empty:
-                scatter(ins["coor"],
-                        ins["depth"],
-                        color="red",
-                        label="Insertions",
-                        alpha=0.4,
-                        s=10)
-            dele = change_types[change_types["type"] == "d"]
-            if not dele.empty:
-                scatter(dele["coor"],
-                        dele["depth"],
-                        color="blue",
-                        label="Deletions",
-                        alpha=0.4,
-                        s=10)
+            colors = {"s": "green", "d": "red", "i": "blue"}
+            for change_type in colors:
+                change = change_types[change_types["type"] == change_type]
+                if not change.empty:
+                    scatter(change["coor"],
+                            change["depth"],
+                            color=colors[change_type],
+                            label=change_type,
+                            alpha=0.4,
+                            s=10)
+
             title(sample)
             xlabel("Position in the reference")
             ylabel("Read coverage")
