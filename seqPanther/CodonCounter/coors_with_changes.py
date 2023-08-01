@@ -13,8 +13,9 @@ from .indel_frames import indel_frames
 
 
 def changed_coordinates(
-        params: Dict[str, Any], bam: str
-) -> Tuple[Dict[int, Dict[str, str | int]], DataFrame, DataFrame]:
+    params: Dict[str, Any], bam: str
+) -> Tuple[Dict[int, Dict[str, Dict[str, Any]
+                          | int]], DataFrame, DataFrame]:
     """Indentify changed coordinates in bam file."""
     print(f"Analysing {bam}.")
     ref = params["ref"]
@@ -190,7 +191,7 @@ def changed_coordinates(
 
 def coor_with_changes_run(
         params: Dict[str, Any],
-        bam: str) -> Tuple[str, DataFrame, DataFrame, DataFrame]:
+        bam: str) -> Tuple[str, DataFrame, DataFrame, DataFrame, DataFrame]:
     params["sequences"] = pyfaidx.Fasta(params["ref"])[params["rid"]]
     params['sample'] = path.basename(bam).split('.bam')[0]
     subs, indels, depth = changed_coordinates(params, bam)
