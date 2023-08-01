@@ -271,14 +271,14 @@ def run(bam: str, rid: str, ref: str, coor_range: str, gff: str,
         }
 
         changes = partial(coors_with_changes.coor_with_changes_run, params)
-        changes = pool.map(changes, bam_files)
+        changes_list = pool.map(changes, bam_files)
 
         pdf = bpdf.PdfPages("output.pdf")
         all_sub = []
         all_indel = []
         all_codon = []
 
-        for sample, merged_table, depth, subs, indel in changes:
+        for sample, merged_table, depth, subs, indel in changes_list:
 
             if depth.empty:
                 continue

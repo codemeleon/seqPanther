@@ -131,11 +131,11 @@ def indel_frames(indel_pos_type_size: DataFrame, bam: str,
             ["ref", "read"]].applymap(
                 lambda x: str(Seq(x).reverse_complement()))
     indel_pos_type_size["Codon Change"] = indel_pos_type_size.apply(
-        lambda x: f"{x['codon_pos']+1}:{x['ref']}>{x['read']}", axis=1)
+        lambda x: f"{int(x['codon_pos'])+1}:{x['ref']}>{x['read']}", axis=1)
 
     indel_pos_type_size["Amino Acid Change"] = indel_pos_type_size.apply(
         lambda x:
-        f"{Seq(x['ref']).translate()}{x['amino_pos']}{Seq(x['read']).translate()}",
+        f"{Seq(x['ref']).translate()}{int(x['amino_pos'])}{Seq(x['read']).translate()}",
         axis=1)
     indel_pos_type_size["codon_count"] = indel_pos_type_size.apply(
         lambda x: f"{x['ref']}-{x['ref_count']};"
