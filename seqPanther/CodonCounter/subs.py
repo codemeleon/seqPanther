@@ -2,7 +2,7 @@
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, Union
 from pandas.core.frame import DataFrame
 
 from .codon_table import codon_table
@@ -10,8 +10,9 @@ from copy import deepcopy
 from Bio import Seq
 
 
-def sub_table(coordinates_with_changes: Dict[int, Dict[str, Dict[str, Any]
-                                                       | int]],
+def sub_table(coordinates_with_changes: Dict[int, Dict[str, Union[Dict[str,
+                                                                       Any],
+                                                                  int]]],
               params: Dict[str, Any]) -> Tuple[DataFrame, DataFrame]:
     sequences = params["sequences"]
     rid = params["rid"]
