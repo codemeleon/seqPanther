@@ -333,19 +333,28 @@ def run(bam: str, rid: str, ref: str, coor_range: str, gff: str,
             pdf.savefig(fig)
 
         pdf.close()
+        try:
 
-        pd.concat(all_codon).to_csv(
-            codoncountfile,
-            index=False,
-            sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
-        pd.concat(all_sub).to_csv(
-            subcountfile,
-            index=False,
-            sep="\t" if subcountfile.name.endswith(".tsv") else ",")
-        pd.concat(all_indel).to_csv(
-            indelcountfile,
-            index=False,
-            sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
+            pd.concat(all_codon).to_csv(
+                codoncountfile,
+                index=False,
+                sep="\t" if codoncountfile.name.endswith(".tsv") else ",")
+        except ValueError:
+            print("No codon changes found")
+        try:
+            pd.concat(all_sub).to_csv(
+                subcountfile,
+                index=False,
+                sep="\t" if subcountfile.name.endswith(".tsv") else ",")
+        except ValueError:
+            print("No substitution changes found")
+        try:
+            pd.concat(all_indel).to_csv(
+                indelcountfile,
+                index=False,
+                sep="\t" if indelcountfile.name.endswith(".tsv") else ",")
+        except ValueError:
+            print("No indel changes found")
 
 
 if __name__ == "__main__":
