@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import pysam
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Union
 import pandas as pd
 from pandas.core.frame import DataFrame
 import numpy as np
@@ -14,8 +14,8 @@ from .indel_frames import indel_frames
 
 def changed_coordinates(
     params: Dict[str, Any], bam: str
-) -> Tuple[Dict[int, Dict[str, Dict[str, Any]
-                          | int]], DataFrame, DataFrame]:
+) -> Tuple[Dict[int, Dict[str, Union[Dict[str, Any], int]]], DataFrame,
+           DataFrame]:
     """Indentify changed coordinates in bam file."""
     print(f"Analysing {bam}.")
     ref = params["ref"]
