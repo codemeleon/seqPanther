@@ -18,7 +18,7 @@ SeqPanther consists of the following set of commands:
 
 ## Operating system compatibility
 
-Unix and OS X Commandline Application. 
+Unix and OS X Commandline Application.
 
 ## Dependencies
 
@@ -63,7 +63,7 @@ The tool relies on multiple external open source programs and python modules as 
 
 ## Option 2: Install directly from Git
 
-To install directly from the Github repo, run the command: 
+To install directly from the Github repo, run the command:
 
 `pip install git+https://github.com/codemeleon/seqPanther.git`
 
@@ -80,6 +80,12 @@ This command help is accessible using `seqpanther codoncounter` or `seqpanther c
 This command help is accessible using `seqpanther cc2ns` or `seqpanther cc2ns --help`.
 
 ## nucsubs
+
+You might need to convert bam to consensus before running `seqpanther nucsubs`. Consensus sequences can be generated using following commands.
+
+- `samtools index <sorted_bamfile>`
+- `bcftools mpileup -f <reference_fasta> <sorted_bamfile> | bcftools call -c --ploidy 1 | vcfutils.pl vcf2fq > <sorted_bamfile>.fq`
+- `seqtk seq seq -aQ64 <sorted_bamfile>.fq > <sorted_bamfile>.fasta`
 
 This command help is accessible using `seqpanther nucsubs` or `seqpanther nucsubs --help`.
 
@@ -101,11 +107,11 @@ This command help is accessible at `seqpanther seqpatcher` or `seqpanther seqpat
 
 The command will generate four outputs in the current folder including: `sub_output.csv` containing details of the nucleotide substitutions, `indel_output.csv` containing details of the indel events, `codon_output.csv` containing details of the codon changes and `output.pdf` which is a plot of genome depth and breadth of coverage annotated with the positions with mutations and indels.
 
-6. If you only want to generate the results for a single BAM file, run the command as `seqpanther codoncounter -bam ./bam/K032282-consensus_alignment_sorted.bam -rid NC_045512.2 -ref GCF_009858895.2_ASM985889v3_genomic.fna -gff GCF_009858895.2_ASM985889v3_genomic.gff -coor_range 21563-25384` replacing the BAM file name with your specific bam file name in the command. 
+6. If you only want to generate the results for a single BAM file, run the command as `seqpanther codoncounter -bam ./bam/K032282-consensus_alignment_sorted.bam -rid NC_045512.2 -ref GCF_009858895.2_ASM985889v3_genomic.fna -gff GCF_009858895.2_ASM985889v3_genomic.gff -coor_range 21563-25384` replacing the BAM file name with your specific bam file name in the command.
 
 7. Outputs can be explored using a text file reader (for the text files) and pdf reader (e.g Adobe Reader) for the PDFs. An example command to view the text files would be: `cat sub_output.csv | sed 's/,/ ,/g' | column -t -s, | less -S`. The user needs to explore those files and remove the changes they would like not to be integrated. A text editor of your choice e.g. bbedit or notepad++ can be used to edit the files.
 
-8. In case you decide that there are certain mutations that you need to change, you will have to convert the outputs from `codoncounter` to the format required by the `nucsubs` command and run the command `seqpanther cc2ns -s sub_output.csv -i sub_output.csv -o changes`. It generates a CSV file for each sample in the `./change` folder. 
+8. In case you decide that there are certain mutations that you need to change, you will have to convert the outputs from `codoncounter` to the format required by the `nucsubs` command and run the command `seqpanther cc2ns -s sub_output.csv -i sub_output.csv -o changes`. It generates a CSV file for each sample in the `./change` folder.
 
 9. Then execute seqpanther as follows: `seqpanther nucsubs -i NC_045512.2 -r NC_045512.2.fasta -c consensus -t changes -o results` to integrate relevant changes to the consensus sequences. The output will be generated in a folder named `results`.
 
