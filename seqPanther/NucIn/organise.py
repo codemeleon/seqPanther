@@ -75,75 +75,85 @@ def run(sub, indel, min_alt, outfolder):
     changed_table = []
     if sub:
         if path.isfile(sub):
-            sub = pd.read_csv(
-                sub,
-                usecols=[
-                    "Sample",
-                    "coor",
-                    "read_count",
-                    "Reference Nucleotide",
-                    "Nucleotide Percent",
-                ],
-            )
-            sub["Nucleotide Percent"] = selected_nuc(
-                sub["Nucleotide Percent"].values, min_alt)
-            sub = sub[~pd.isna(sub['Nucleotide Percent'])]
-            sub["sub"] = sub.apply(alt_nuc, axis=1)
-            del sub["Nucleotide Percent"]
-            # Split rows
-            sub = sub[sub["sub"].apply(lambda x: x.strip() != "")]
-            sub["sub"] = sub["sub"].apply(lambda x: x.split(","))
-            sub = sub.explode("sub")
-            sub["pt"] = sub["sub"].apply(lambda x: float(x.split(":")[-1]))
-            sub = sub.sort_values(["coor", "pt"], ascending=[True, False])
-            del sub["pt"]
+            try:
+                sub = pd.read_csv(
+                    sub,
+                    usecols=[
+                        "Sample",
+                        "coor",
+                        "read_count",
+                        "Reference Nucleotide",
+                        "Nucleotide Percent",
+                    ],
+                )
+                sub["Nucleotide Percent"] = selected_nuc(
+                    sub["Nucleotide Percent"].values, min_alt)
+                sub = sub[~pd.isna(sub['Nucleotide Percent'])]
+                sub["sub"] = sub.apply(alt_nuc, axis=1)
+                del sub["Nucleotide Percent"]
+                # Split rows
+                sub = sub[sub["sub"].apply(lambda x: x.strip() != "")]
+                sub["sub"] = sub["sub"].apply(lambda x: x.split(","))
+                sub = sub.explode("sub")
+                sub["pt"] = sub["sub"].apply(lambda x: float(x.split(":")[-1]))
+                sub = sub.sort_values(["coor", "pt"], ascending=[True, False])
+                del sub["pt"]
 
-            sub["type"] = "sub"
-            changed_table.append(sub[["Sample", "coor", "type", "sub"]])
+                sub["type"] = "sub"
+                changed_table.append(sub[["Sample", "coor", "type", "sub"]])
+            except Exception as e:
+                print(e)
 
         else:
             exit(f"Given {sub} is not file")
     if indel:
         if path.isfile(indel):
-            indel = pd.read_csv(
-                indel,
-                usecols=[
-                    "Sample",
-                    "coor",
-                    "Nucleotide Frequency",
-                    "Nucleotide Percent",
-                ],
-            )
+            try:
+                indel = pd.read_csv(
+                    indel,
+                    usecols=[
+                        "Sample",
+                        "coor",
+                        "Nucleotide Frequency",
+                        "Nucleotide Percent",
+                    ],
+                )
 
-            indel = indel[indel["Nucleotide Percent"] >= min_alt]
-            indel["type"] = indel["Nucleotide Frequency"].apply(
-                lambda x: x[:3])
-            indel["Nucleotide Frequency"] = indel[
-                "Nucleotide Frequency"].apply(lambda x: x[3:])
-            indel["sub"] = "-"
-            indel.loc[indel["type"] == "del",
-                      "sub"] = indel.loc[indel["type"] == "del"].apply(
-                          lambda x: x["Nucleotide Frequency"].split(":")[0] +
-                          ":" + "-" * len(x["Nucleotide Frequency"].split(":")[
-                              0]) + ":" + str(x["Nucleotide Percent"]),
-                          axis=1,
-                      )  # Add more values here
+                indel = indel[indel["Nucleotide Percent"] >= min_alt]
+                indel["type"] = indel["Nucleotide Frequency"].apply(
+                    lambda x: x[:3])
+                indel["Nucleotide Frequency"] = indel[
+                    "Nucleotide Frequency"].apply(lambda x: x[3:])
+                indel["sub"] = "-"
+                indel.loc[indel["type"] == "del", "sub"] = indel.loc[
+                    indel["type"] == "del"].apply(
+                        lambda x: x["Nucleotide Frequency"].split(":")[0] + ":"
+                        + "-" * len(x["Nucleotide Frequency"].split(":")[0]
+                                    ) + ":" + str(x["Nucleotide Percent"]),
+                        axis=1,
+                    )  # Add more values here
 
-            indel.loc[indel["type"] == "ins",
-                      "sub"] = indel.loc[indel["type"] == "ins"].apply(
-                          lambda x: "-" + ":" + x["Nucleotide Frequency"].
-                          split(":")[0] + ":" + str(x["Nucleotide Percent"]),
-                          axis=1,
-                      )
-            indel["sub"] = indel["sub"].apply(lambda x: x.split(","))
-            indel = indel.explode("sub")
-            indel["pt"] = indel["sub"].apply(lambda x: float(x.split(":")[-1]))
-            indel = indel.sort_values(["coor", "pt"], ascending=[True, False])
-            del indel["pt"]
+                indel.loc[indel["type"] == "ins", "sub"] = indel.loc[
+                    indel["type"] == "ins"].apply(
+                        lambda x: "-" + ":" + x["Nucleotide Frequency"].split(
+                            ":")[0] + ":" + str(x["Nucleotide Percent"]),
+                        axis=1,
+                    )
+                indel["sub"] = indel["sub"].apply(lambda x: x.split(","))
+                indel = indel.explode("sub")
+                indel["pt"] = indel["sub"].apply(
+                    lambda x: float(x.split(":")[-1]))
+                indel = indel.sort_values(["coor", "pt"],
+                                          ascending=[True, False])
+                del indel["pt"]
 
-            changed_table.append(indel[["Sample", "coor", "type", "sub"]])
+                changed_table.append(indel[["Sample", "coor", "type", "sub"]])
+            except Exception as e:
+                print(e)
         else:
             exit(f"Given {indel} is not file")
+    if not changed_table:
+        exit("No data detected in input files.")
     changed_table = pd.concat(changed_table)  # TODO: Request for coodrinates
     changed_table = changed_table.sort_values("coor", ascending=True)
     changed_table = changed_table[changed_table["sub"].apply(len) > 0]

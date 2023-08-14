@@ -107,18 +107,21 @@ def run(ref, rid, tabd, outd, consensus, merge):
     sample_seq = {}
     is_fold = False
     if path.isfile(consensus):
+        flb = path.split(consensus)[-1].split(".")[0]
         try:
             for rec in SeqIO.parse(consensus, "fasta"):
-                sample_seq[rec.id] = rec.seq
+                sample_seq[flb] = rec.seq
         except Exception as e:
             print(e)
             exit(f"Consenus file {consensus} is not fasta.")
     else:
         is_fold = True
         for ss in glob(f"{consensus}/*.fasta"):
+            flb = ss.split("/")[-1].split(".")[0]
             try:
                 for rec in SeqIO.parse(ss, "fasta"):
-                    sample_seq[rec.id] = rec.seq
+                    sample_seq[flb] = rec.seq
+                    break
             except Exception as e:
                 print(e)
                 print(f"Consenus file {ss} is not fasta. ignoring...")
