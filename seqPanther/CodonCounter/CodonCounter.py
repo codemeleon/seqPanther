@@ -182,11 +182,18 @@ def str2coors(coorstr: str) -> List[List[int]]:
     default="indel_output.csv",
     show_default=True,
 )
+@click.option('-l',
+              '--log',
+              help="Y axis on log10 scale",
+              type=bool,
+              default=True,
+              show_default=True)
 def run(bam: str, rid: str, ref: str, coor_range: str, gff: str,
         ignore_orphans: bool, alt_codon_frac: float, min_mapping_quality: int,
         min_base_quality: int, ignore_overlaps: bool, min_seq_depth: int,
         alt_nuc_count: float, cpu: int, endlen: int, codoncountfile: str,
-        subcountfile: str, indelcountfile: str, max_seq_depth: int) -> None:
+        subcountfile: str, indelcountfile: str, max_seq_depth: int,
+        log: bool) -> None:
     """Expected to that bam file is sorted based on coordinate and indexed."""
     for fl in [codoncountfile, subcountfile, indelcountfile]:
         try:
@@ -328,8 +335,8 @@ def run(bam: str, rid: str, ref: str, coor_range: str, gff: str,
             xlabel("Position in the reference")
             ylabel("Read coverage")
             legend()
-
-            yscale('log')
+            if log:
+                yscale('log')
             pdf.savefig(fig)
 
         pdf.close()
