@@ -6,11 +6,13 @@ import pandas as pd
 from glob import glob
 from os import path, makedirs, system
 import itertools
+from pandas.core.indexes.range import RangeIndex
+from typing import Generator, Tuple
 
 from tempfile import mkdtemp
 
 
-def ranges(i):
+def ranges(i: RangeIndex) -> Generator[Tuple[int, int], None, None]:
     for _, b in itertools.groupby(enumerate(i),
                                   lambda pair: pair[1] - pair[0]):
         b = list(b)
@@ -67,7 +69,8 @@ def ranges(i):
     show_default=True,
     type=bool,
 )
-def run(ref, rid, tabd, outd, consensus, merge):
+def run(ref: str, rid: str, tabd: str, outd: str, consensus: str,
+        merge: bool) -> None:
     """
     Integrate changes in nucleotide sequences.\n
     fasta: file for folder containing fasta files name ending with .fasta\n
